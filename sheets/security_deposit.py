@@ -1,0 +1,61 @@
+import pandas as pd
+
+def inject(ws, params):
+    """
+    Injects inputs into the 'Security Deposit' sheet.
+    """
+    ws["B9"] = 0.0  # Fitout Deposit
+    ws["B10"] = params["Security Deposit Amount"]
+    ws["B11"] = 0.0  # Additional deposit
+    ws["B12"] = params["Addnl.Deposit -energy(Refundable)"]
+    
+    # We can also write the cost of capital in cell F15 or other referencing fields if they are evaluated
+    # The original specimen has formulas in row 13, 14, 15 etc., so writing to B9-B12 is sufficient to compute carrying costs!
+    # For ARO calculations:
+    # ARO Cost rate cell is B23 in specimen: '=IF(B22<50000,82.6,62.72)'
+    # We will write the user incremental ARO rate to a cell or let it evaluate dynamically via formulas!
+    # The ARO Rate in the specimen sheet is already driven by Excel formulas!
+
+def simulate(params):
+    """
+    Simulates Security Deposit carrying costs and ARO parameters.
+    """
+    currency = params["Currency"]
+    area_sqft = params["Chargeable Area Sqft"]
+    capital_rate = params.get("Cost of Capital", 0.105)
+    term_months = params.get("Lease Term Months", 72)
+    if pd.isna(term_months) or term_months is None:
+        term_months = 72
+        
+    sd_amt = params["Security Deposit Amount"]
+    energy_dep = params["Addnl.Deposit -energy(Refundable)"]
+    
+    # Interest carrying costs calculations
+    # carrying interest cost = Deposit * WACC / 12 * term_months
+    sd_carrying_cost = sd_amt * capital_rate / 12 * term_months
+    energy_carrying_cost = energy_dep * capital_rate / 12 * 36  # In specimen, energy deposit term is 36 months!
+    
+    total_deposit = sd_amt + energy_dep
+    total_carrying_cost = sd_carrying_cost + energy_carrying_cost
+    carrying_cost_rate_sqft = total_carrying_cost / (area_sqft * term_months)
+    
+    # ARO (Asset Retirement Obligation) calculations
+    aro_rate = params.get("Incremental Restoration Cost Sqft", 82.6)
+    if aro_rate == 82.6 and area_sqft >= 50000:
+        aro_rate = 62.72
+        
+    total_aro_cost = area_sqft * aro_rate
+    aro_per_month = total_aro_cost / term_months
+    aro_conversion_factor = aro_per_month / area_sqft
+    
+    return {
+        "Fitout Deposit": {"Amount": 0.0, "Carrying Cost": 0.0},
+        "Security Deposit": {"Amount": sd_amt, "Carrying Cost": sd_carrying_cost},
+        "Energy Deposit": {"Amount": energy_dep, "Carrying Cost": energy_carrying_cost},
+        "Total Deposits": {"Amount": total_deposit, "Carrying Cost": total_carrying_cost},
+        "Carrying Cost per Sqft/mo": carrying_cost_rate_sqft,
+        "ARO Rate per Sqft (as of 2017)": aro_rate,
+        "Total ARO Capital Cost Asset": total_aro_cost,
+        "Monthly ARO Amortization Cost": aro_per_month,
+        "ARO Conversion Factor (sqft/pm)": aro_conversion_factor
+    }
