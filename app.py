@@ -5,14 +5,12 @@ import datetime
 import os
 import io
 
-# Import modular sheet engines
 import sheets.main_sheet as main_sheet
 import sheets.rent_calculation as rent_calculation
 import sheets.lease_size as lease_size
 import sheets.capex_pm as capex_pm
 import sheets.security_deposit as security_deposit
 
-# --- PAGE SETUP ---
 st.set_page_config(
     page_title="Rental Automation System",
     page_icon="🏢",
@@ -32,7 +30,7 @@ def load_template(filename, directory="templates"):
             return ""
     return ""
 
-# Inject custom stylesheet from templates directory
+# Inject css file from templates
 style_css = load_template("style.css")
 if style_css:
     st.markdown(f"<style>{style_css}</style>", unsafe_allow_html=True)
@@ -66,7 +64,7 @@ def parse_input_xlsx(file_bytes):
             except Exception:
                 return default
 
-        # Clean/Normalize values
+        # Normalize values
         params = {}
         params["Lease ID"] = raw_params.get("Lease ID", "LEASE-001")
         params["REU Name"] = raw_params.get("REU Name", "IN-CHEK2")
@@ -142,19 +140,19 @@ def compile_output_workbook(template_path, params):
     """Loads specimen template, populates the 5 sheets sequentially, and saves new workbook."""
     wb = openpyxl.load_workbook(template_path, data_only=False)
     
-    # 1. Populate Main sheet
+    # Populate Main sheet
     main_sheet.inject(wb["Main"], params)
     
-    # 2. Populate Rent Calculation sheet
+    # Populate Rent Calculation sheet
     rent_calculation.inject(wb["Rent Calculation"], params)
     
-    # 3. Populate Lease Size sheet
+    # Populate Lease Size sheet
     lease_size.inject(wb["Lease Size"], params)
     
-    # 4. Populate CAPEX and PM sheet
+    # Populate CAPEX and PM sheet
     capex_pm.inject(wb["CAPEX and PM"], params)
     
-    # 5. Populate Security Deposit sheet
+    # Populate Security Deposit sheet
     security_deposit.inject(wb["Security Deposit"], params)
     
     # Save to a memory stream for download
@@ -226,7 +224,7 @@ if uploaded_file is not None:
 st.sidebar.markdown('<p style="font-size: 1.25rem; font-weight:600; color:#cbd5e1; margin-top: 20px;">⚙️ Parameter Configuration</p>', unsafe_allow_html=True)
 
 # Expander 1: Real Estate & Lease Properties
-with st.sidebar.expander("🏢 Real Estate & Lease Properties", expanded=True):
+with st.sidebar.expander("▶ Real Estate & Lease Properties", expanded=True):
     reu_name = st.text_input("REU Name", value=params["REU Name"])
     bldg_name = st.text_input("Building Name", value=params["Building Name"])
     city = st.text_input("City", value=params["City"])
@@ -249,7 +247,7 @@ with st.sidebar.expander("🏢 Real Estate & Lease Properties", expanded=True):
     energy_dep = st.number_input("Energy Deposit Amount", value=float(params["Addnl.Deposit -energy(Refundable)"]), step=10000.0)
 
 # Expander 2: CAPEX & PM Investment Schedule
-with st.sidebar.expander("💰 CAPEX & PM Schedule"):
+with st.sidebar.expander("▶ CAPEX & PM Schedule"):
     st.markdown("**Fitout Investments (Breakdown)**")
     fitout_breakdown = params.get("Fitout Cost Breakdown", [14000000.0, 5000000.0, 15000000.0])
     fitout_1 = st.number_input("Fitout Phase 1 Cost", value=float(fitout_breakdown[0]), step=100000.0)
@@ -278,7 +276,7 @@ with st.sidebar.expander("💰 CAPEX & PM Schedule"):
     pm_31 = st.number_input("PM FY2031", value=float(pm_dict.get(2031, 0)), step=10000.0)
 
 # Expander 3: Financial Rates & ARO Workings
-with st.sidebar.expander("🛡️ Rates & ARO Restoration"):
+with st.sidebar.expander("▶ Rates & ARO Restoration"):
     wacc = st.slider("Cost of Capital (WACC) %", min_value=0.0, max_value=0.25, value=float(params["Cost of Capital"]), step=0.005)
     borrow_rate = st.slider("Incremental Borrowing Rate %", min_value=0.0, max_value=0.25, value=float(params["Incremental Borrowing Rate"]), step=0.005)
     imputed_rate = st.slider("Imputed Interest Rate %", min_value=0.0, max_value=0.20, value=float(params["Imputed Interest Rate"]), step=0.001)
@@ -328,21 +326,6 @@ sd_results = security_deposit.simulate(ui_params)
 rent_calc_results = rent_calculation.simulate(ui_params)
 lease_size_df, npv_value = lease_size.simulate(ui_params, capex_pm_df)
 
-# Initialize Session State
-if "download_clicked" not in st.session_state:
-    st.session_state.download_clicked = False
-
-# Auto-hide previews on modifications
-current_sig = f"{reu_name}-{bldg_name}-{city}-{area}-{start_date}-{end_date}-{rent_sqft}-{cam_sqft}-{rent_esc}-{rent_esc_freq}-{cam_esc}-{sec_deposit}-{energy_dep}-{fitout_total}-{wacc}-{imputed_rate}"
-if "last_params_sig" not in st.session_state:
-    st.session_state.last_params_sig = current_sig
-
-if st.session_state.last_params_sig != current_sig:
-    st.session_state.download_clicked = False
-    st.session_state.last_params_sig = current_sig
-
-def handle_download():
-    st.session_state.download_clicked = True
 
 
 # --- DYNAMIC STATUS CARD SECTION ---
@@ -412,129 +395,14 @@ if os.path.exists(template_file_path):
         output_stream = compile_output_workbook(template_file_path, ui_params)
         
         st.download_button(
-            label="💾 Generate and Download Scaled Excel Workbook (5 Sheets)",
+            label="💾 Generate and Download Excel Workbook",
             data=output_stream,
-            file_name=f"rental_scaled_workbook_{ui_params['REU Name']}_{datetime.date.today()}.xlsx",
+            file_name=f"rental_workbook_{ui_params['REU Name']}_{datetime.date.today()}.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            use_container_width=True,
-            on_click=handle_download
+            use_container_width=True
         )
     except Exception as e:
         st.error(f"Excel template compilation failed: {e}")
 else:
     st.warning(f"Excel template specimen not found in path: {template_file_path}")
 
-
-# --- BEAUTIFUL TABBED LIVE PREVIEWS (5 SHEETS) ---
-if st.session_state.download_clicked:
-    st.markdown("### 🔍 Live Modular Worksheet Previews")
-    
-    tab1, tab2, tab3, tab4, tab5 = st.tabs([
-        "📂 Sheet 1: Main Summary",
-        "📈 Sheet 2: Rent Calculation",
-        "📊 Sheet 3: Lease Size Summary",
-        "⚙️ Sheet 4: CAPEX & PM",
-        "🛡️ Sheet 5: Security Deposit"
-    ])
-    
-    # Tab 1: Main Summary Preview
-    with tab1:
-        st.markdown('<div class="workspace-card">', unsafe_allow_html=True)
-        st.markdown("<h4>🏢 Sheet 1 Variables (Main Summary Properties)</h4>", unsafe_allow_html=True)
-        main_summary = main_sheet.simulate(ui_params)
-        
-        col_m1, col_m2 = st.columns(2)
-        with col_m1:
-            st.markdown(f"**REU Name:** <code class='premium-code'>{main_summary['REU Name']}</code>", unsafe_allow_html=True)
-            st.markdown(f"**Building Name:** <code class='premium-code'>{ui_params['Building Name']}</code>", unsafe_allow_html=True)
-            st.markdown(f"**Chargeable Area:** <code class='premium-code'>{main_summary['Chargeable Area (Sq.ft.)']} Sq.ft. ({main_summary['Chargeable Area (Sq.m.)']} Sq.m.)</code>", unsafe_allow_html=True)
-            st.markdown(f"**Agreement Term:** <code class='premium-code'>{main_summary['Lease Commencement Date']} to {main_summary['Lease Expiry Date']} ({main_summary['Lease Term (Years)']} Years)</code>", unsafe_allow_html=True)
-            st.markdown(f"**Total Fitout Capex:** <code class='premium-code'>{main_summary['Capex Cost']}</code>", unsafe_allow_html=True)
-        with col_m2:
-            st.markdown(f"**Rent Rate / Sqft / Mo:** <code class='premium-code'>{main_summary['Quoted Rentals (per Sqft/mo)']}</code>", unsafe_allow_html=True)
-            st.markdown(f"**Quoted CAM / Sqft / Mo:** <code class='premium-code'>{main_summary['Quoted CAM (per Sqft/mo)']}</code>", unsafe_allow_html=True)
-            st.markdown(f"**Security Deposit:** <code class='premium-code'>{main_summary['Security Deposit Amount']}</code>", unsafe_allow_html=True)
-            st.markdown(f"**PM Maintenance Cost:** <code class='premium-code'>{main_summary['PM Cost Over Lease Period']}</code>", unsafe_allow_html=True)
-            st.markdown(f"**Imputed Interest Rate:** <code class='premium-code'>{main_summary['Imputed Interest Rate']}</code>", unsafe_allow_html=True)
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-    # Tab 2: Rent Calculation Preview
-    with tab2:
-        st.markdown('<div class="workspace-card">', unsafe_allow_html=True)
-        st.markdown("<h4>📋 Sheet 2 Evaluated Commercials & Net Rentals</h4>", unsafe_allow_html=True)
-        
-        col_c1, col_c2 = st.columns(2)
-        with col_c1:
-            st.markdown("##### Standard Occupancy Costs (Net Rent I)")
-            st.write(f"- **Base Rent Rate:** {ui_params['Currency']} {rent_calc_results['Base Rental Rate (sqft/mo)']:.2f} per sqft/mo")
-            st.write(f"- **Quoted CAM Rate:** {ui_params['Currency']} {rent_calc_results['Common Area Maintenance (CAM)']:.2f} per sqft/mo")
-            st.write(f"- **SD carrying cost:** {ui_params['Currency']} {rent_calc_results['Security Deposit Imputed Carrying Cost (sqft/mo)']:.4f} per sqft/mo")
-            st.write(f"- **Stamp Duty & Registration effect:** {ui_params['Currency']} {rent_calc_results['Stamp Duty & Registration (sqft/mo)']:.4f} per sqft/mo")
-            st.write(f"- **Property Management Fees (7%):** {ui_params['Currency']} {rent_calc_results['Property Management Fees (sqft/mo)']:.4f} per sqft/mo")
-            st.markdown(f"**Net Rent I Subtotal: `{ui_params['Currency']} {rent_calc_results['Net Rent I (Standard)']:.2f}` per sqft/mo**")
-            
-        with col_c2:
-            st.markdown("##### Refinancing Occupancy Costs (Net Rent II)")
-            st.write(f"- **Imputed Fitouts & Capex Amortization Cost effect:** per sqft/mo")
-            st.write(f"- **Maintenance (PM) Amortization effect:** per sqft/mo")
-            st.write(f"- **ARO Restoration Cost effect:** per sqft/mo")
-            st.markdown(f"**Net Rent II Subtotal: `{ui_params['Currency']} {rent_calc_results['Net Rent II (Refinancing)']:.2f}` per sqft/mo**")
-            st.write("---")
-            st.markdown(f"**Total Net Occupancy Cost: `{ui_params['Currency']} {rent_calc_results['Total Net Rental Rate (sqft/mo)']:.2f}` per sqft/mo**")
-            
-        st.markdown("**Stamp Duty working details**")
-        st.info(f"Estimated Market Value Stamp Duty and Registration: {ui_params['Currency']} {rent_calc_results['Estimated Stamp Duty & Registration Amount']:,.2f}")
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-    # Tab 3: Lease Size Preview
-    with tab3:
-        st.markdown('<div class="workspace-card">', unsafe_allow_html=True)
-        st.markdown("<h4>📊 Sheet 3 10-Year Cash Outflow & Present Value Summary</h4>", unsafe_allow_html=True)
-        st.markdown(f"**Net Present Value (NPV) Cash Outflow: `Euro {npv_value/1000000:,.2f} M` (discounted at WACC of {ui_params['Cost of Capital']*100:.1f}%)**")
-        
-        # Display styled Cash Outflow dataframe
-        formatted_ls = lease_size_df.copy()
-        for col in ["Rent Cost", "CAM Cost", "Capex", "Maintenance", "Total Outflow", "Present Value Outflow"]:
-            formatted_ls[col] = formatted_ls[col].map(lambda x: f"{ui_params['Currency']} {x:,.2f}")
-        st.dataframe(formatted_ls, use_container_width=True)
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-    # Tab 4: CAPEX and PM Preview
-    with tab4:
-        st.markdown('<div class="workspace-card">', unsafe_allow_html=True)
-        st.markdown("<h4>⚙️ Sheet 4 Amortization & Average Net Book Values</h4>", unsafe_allow_html=True)
-        
-        formatted_cp = capex_pm_df.copy()
-        for col in ["Fitout Amortization", "Capex Injected", "Capex Amortization", "Capex Imputed Interest", "Maintenance Cost"]:
-            formatted_cp[col] = formatted_cp[col].map(lambda x: f"{ui_params['Currency']} {x:,.2f}")
-        st.dataframe(formatted_cp, use_container_width=True)
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-    # Tab 5: Security Deposit Preview
-    with tab5:
-        st.markdown('<div class="workspace-card">', unsafe_allow_html=True)
-        st.markdown("<h4>🛡️ Sheet 5 Security Deposit Workings & Asset Retirement Obligation</h4>", unsafe_allow_html=True)
-        
-        col_d1, col_d2 = st.columns(2)
-        with col_d1:
-            st.markdown("##### Carrying Cost Imputations")
-            sd_data = [
-                {"Component": "Security Deposit", "Amount": f"{ui_params['Currency']} {sd_results['Security Deposit']['Amount']:,.2f}", "Carrying Interest Cost": f"{ui_params['Currency']} {sd_results['Security Deposit']['Carrying Cost']:,.2f}"},
-                {"Component": "Energy Deposit", "Amount": f"{ui_params['Currency']} {sd_results['Energy Deposit']['Amount']:,.2f}", "Carrying Interest Cost": f"{ui_params['Currency']} {sd_results['Energy Deposit']['Carrying Cost']:,.2f}"},
-                {"Component": "Total deposits", "Amount": f"{ui_params['Currency']} {sd_results['Total Deposits']['Amount']:,.2f}", "Carrying Interest Cost": f"{ui_params['Currency']} {sd_results['Total Deposits']['Carrying Cost']:,.2f}"}
-            ]
-            st.table(pd.DataFrame(sd_data))
-            st.write(f"- **Deposit Imputed Carrying Cost:** `{sd_results['Carrying Cost per Sqft/mo']:.6f}` {ui_params['Currency']}/sqft/mo")
-            
-        with col_d2:
-            st.markdown("##### Asset Retirement Obligation (ARO)")
-            aro_data = [
-                {"ARO Variable": "Chargeable Area", "Value": f"{area:,} Sq.ft."},
-                {"ARO Variable": "ARO Cost Rate per Sqft", "Value": f"{sd_results['ARO Rate per Sqft (as of 2017)']:.2f}"},
-                {"ARO Variable": "Total ARO Capital Obligation", "Value": f"{ui_params['Currency']} {sd_results['Total ARO Capital Cost Asset']:,.2f}"},
-                {"ARO Variable": "Monthly Amortization Cost", "Value": f"{ui_params['Currency']} {sd_results['Monthly ARO Amortization Cost']:,.2f}"},
-                {"ARO Variable": "Conversion Factor (Sqft/pm)", "Value": f"{sd_results['ARO Conversion Factor (sqft/pm)']:.6f}"}
-            ]
-            st.table(pd.DataFrame(aro_data))
-            
-        st.markdown('</div>', unsafe_allow_html=True)
