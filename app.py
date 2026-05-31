@@ -12,7 +12,7 @@ import sheets.capex_pm as capex_pm
 import sheets.security_deposit as security_deposit
 
 st.set_page_config(
-    page_title="Rental Automation System",
+    page_title="Siemens - Rental Automation System",
     page_icon="🏢",
     layout="wide",
     initial_sidebar_state="expanded"
