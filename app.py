@@ -135,7 +135,6 @@ def parse_input_xlsx(file_bytes):
         return {}, str(e)
 
 
-# --- WORKBOOK COMPILER ORCHESTRATOR ---
 def compile_output_workbook(template_path, params):
     """Loads specimen template, populates the 5 sheets sequentially, and saves new workbook."""
     wb = openpyxl.load_workbook(template_path, data_only=False)
@@ -155,6 +154,10 @@ def compile_output_workbook(template_path, params):
     # Populate Security Deposit sheet
     security_deposit.inject(wb["Security Deposit"], params)
     
+    for ws in wb.worksheets:
+        if ws.sheet_properties:
+            ws.sheet_properties.tabColor = None
+            
     # Save to a memory stream for download
     output = io.BytesIO()
     wb.save(output)
