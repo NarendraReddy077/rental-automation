@@ -12,6 +12,18 @@ def inject(ws, params):
     ws["F33"] = params.get("Security Deposit Months", 10)
     ws["F118"] = params.get("Opex Others Per Month", 654.0)
 
+    # Disable Outline Level selectors / group symbols in the sheet
+    if hasattr(ws, 'sheet_properties') and ws.sheet_properties:
+        if hasattr(ws.sheet_properties, 'outlinePr') and ws.sheet_properties.outlinePr:
+            ws.sheet_properties.outlinePr.showOutlineSymbols = False
+    
+    if hasattr(ws, 'sheet_view') and ws.sheet_view:
+        ws.sheet_view.showOutlineSymbols = False
+        
+    if hasattr(ws, 'views') and ws.views and hasattr(ws.views, 'sheetView'):
+        for sv in ws.views.sheetView:
+            sv.showOutlineSymbols = False
+
 def simulate(params):
     """
     Simulates evaluated figures in the Rent Calculation sheet.
