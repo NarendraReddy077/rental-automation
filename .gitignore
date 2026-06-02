@@ -1,0 +1,6 @@
+__pycache__/
+artifacts/output_test.xlsx
+artifacts/~$input.xlsx
+artifacts/~$Rental Specimen.xlsx
+artifacts/rental-specimen.xlsx
+venv/
