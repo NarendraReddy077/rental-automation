@@ -391,7 +391,7 @@ st.markdown(metrics_html, unsafe_allow_html=True)
 
 
 # --- EXCEL WORKBOOK COMPILER GENERATION ---
-template_file_path = r"C:\Users\z0050s8t\Documents\rental-automaton\artifacts\Rental Specimen.xlsx"
+template_file_path = r"C:\Users\z0050s8t\Documents\rental-automation\artifacts\Rental Specimen.xlsx"
 
 if os.path.exists(template_file_path):
     try:
