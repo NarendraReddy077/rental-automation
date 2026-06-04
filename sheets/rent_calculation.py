@@ -53,21 +53,24 @@ def simulate(params):
     total_opex = opex_others + opex_mgmt_fee
     
     # Carrying costs (Simulated using Security Deposit carrying cost)
-    # carrying cost of security deposit = Security Deposit * Cost of Capital / 12 * 72
+    term_months = params.get("Lease Term Months", 72)
+    if pd.isna(term_months) or term_months is None or term_months <= 0:
+        term_months = 72
+
+    # carrying cost of security deposit = Security Deposit * Cost of Capital / 12 * term_months
     capital_rate = params.get("Cost of Capital", 0.105)
     sd_amount = params["Security Deposit Amount"]
     energy_deposit = params["Addnl.Deposit -energy(Refundable)"]
-    carrying_interest = (sd_amount + energy_deposit) * capital_rate / 12.0 * 72.0
-    carrying_cost_per_sqft = carrying_interest / (area_sqft * 72)
+    carrying_interest = (sd_amount + energy_deposit) * capital_rate / 12.0 * term_months
+    carrying_cost_per_sqft = carrying_interest / (area_sqft * term_months)
     
     # ARO Cost
     aro_rate = params.get("Incremental Restoration Cost Sqft", 82.6)
     if aro_rate == 82.6 and area_sqft >= 50000:
         aro_rate = 62.72
-    aro_cost_sqft_mo = (area_sqft * aro_rate / 72.0) / area_sqft
+    aro_cost_sqft_mo = (area_sqft * aro_rate / term_months) / area_sqft
     
     # Capex carrying cost (Amortization + Imputed Interest)
-    # Fitout cost B6 = 14M, Capex = 43M, PM = 2.5M
     fitout_cost = params["Fitout Cost"]
     pm_cost = params.get("PM Cost Over Lease", 2500000.0)
     
@@ -77,20 +80,22 @@ def simulate(params):
     eff_sd_carrying = carrying_cost_per_sqft
     eff_cam = cam_rate
     eff_brokerage = 0.0  # Brokerage is 0 in specimen
-    eff_stamp_duty = total_stamp_duty / (area_sqft * 72)
+    eff_stamp_duty = total_stamp_duty / (area_sqft * term_months)
     eff_pm_fees = (eff_rent + eff_parking + eff_sd_carrying + eff_cam + eff_brokerage + eff_stamp_duty) * 0.07
     
     net_rent_1 = eff_rent + eff_parking + eff_sd_carrying + eff_cam + eff_brokerage + eff_stamp_duty + eff_pm_fees
     
     # Calculate Net Rent II Components (per sqft/mo)
-    # Simulated values based on typical specimens
     imputed_rate = params.get("Imputed Interest Rate", 0.0711)
     # Fitouts amortization (average)
-    eff_fitouts = (fitout_cost / 72) / area_sqft
+    eff_fitouts = (fitout_cost / term_months) / area_sqft
     # Capex amortization (average)
-    eff_capex = (fitout_cost * 1.2 / 72) / area_sqft  # scaled
+    total_capex = sum(params.get("Capex Schedule", {}).values())
+    if total_capex == 0:
+        total_capex = fitout_cost * 1.2
+    eff_capex = (total_capex / term_months) / area_sqft
     # PM amortization
-    eff_pm_amort = (pm_cost / 72) / area_sqft
+    eff_pm_amort = (pm_cost / term_months) / area_sqft
     # ARO amortization
     eff_aro = aro_cost_sqft_mo
     

@@ -4,9 +4,17 @@ import numpy as np
 def inject(ws, params):
     """
     Descriptive injection for 'Lease Size' worksheet.
-    Since it is fully formula-driven in Excel, no hardcoded cell updates are necessary.
+    Updates column I cell I26 to dynamically sum fitout phases starting from Phase 2.
     """
-    pass
+    fitouts = list(params.get("Fitout Cost Breakdown", []))
+    N = len(fitouts)
+    
+    # Update row 26 column I to sum fitouts starting from Phase 2 (row 12, 18, 24, ...)
+    if N > 1:
+        terms = [f"'CAPEX and PM'!B{6 + 6 * k}" for k in range(1, N)]
+        ws.cell(row=26, column=9, value="=" + "+".join(terms))
+    else:
+        ws.cell(row=26, column=9, value=0)
 
 def simulate(params, capex_pm_df=None):
     """

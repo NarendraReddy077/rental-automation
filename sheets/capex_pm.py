@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import datetime
+import openpyxl
 
 def calculate_fy_months(start_date, term_months, fitout_term_months):
     """
@@ -24,139 +25,305 @@ def calculate_fy_months(start_date, term_months, fitout_term_months):
         
     return fy_months
 
+def get_capex_tranche_months(start_date, term_months, tranche_idx, useful_life):
+    """
+    Helper to calculate active months for a given CAPEX tranche with user-defined useful life.
+    """
+    start_year = start_date.year
+    tranche_year = start_year + tranche_idx - 1
+    if tranche_idx == 1:
+        return calculate_fy_months(start_date, term_months, useful_life)
+    else:
+        first_year_months = 12 - start_date.month + 1
+        elapsed = first_year_months + 12 * (tranche_idx - 2)
+        remaining = max(0, term_months - elapsed)
+        if remaining <= 0:
+            return {}
+        return calculate_fy_months(datetime.date(tranche_year, 1, 1), remaining, useful_life)
+
 def inject(ws, params):
     """
     Injects parameters and schedules into 'CAPEX and PM' worksheet.
+    Handles dynamic insertion of new Fitout rows if N > 3.
     """
-    # Write fitout costs (Splitting if needed, otherwise write single fitout)
-    fitouts = params.get("Fitout Cost Breakdown", [params["Fitout Cost"], 0, 0])
-    # Make sure we have at least 3 elements
-    while len(fitouts) < 3:
-        fitouts.append(0)
-        
-    ws["B6"] = fitouts[0]
-    ws["B12"] = fitouts[1]
-    ws["B18"] = fitouts[2]
-    
-    # Write Capex schedule by FY
-    capex_sched = params.get("Capex Schedule", {2026: 14000000.0, 2027: 12000000.0, 2028: 5000000.0, 2029: 6000000.0, 2030: 6000000.0})
-    # Capex headers start at col F (col 6) on row 36
-    for c in range(6, 16):
-        fy = ws.cell(row=36, column=c).value
-        if isinstance(fy, (int, float)):
-            fy = int(fy)
-            ws.cell(row=38, column=c, value=capex_sched.get(fy, 0.0))
-            
-    # Write Maintenance (PM) schedule by FY
-    pm_sched = params.get("PM Schedule", {2026: 1500000.0, 2027: 200000.0, 2028: 200000.0, 2029: 200000.0, 2030: 200000.0, 2031: 200000.0})
-    # PM headers are F95 to K95
-    for c in range(6, 16):
-        fy = ws.cell(row=2, column=c).value  # Fetch year from row 2
-        if isinstance(fy, (int, float)):
-            fy = int(fy)
-            ws.cell(row=95, column=c, value=pm_sched.get(fy, 0.0))
-
-    # Dynamically populate "Month needed" rows based on start date and term
     start_date = params["Agreement Start Date"]
+    start_year = start_date.year
     term_months = params.get("Lease Term Months", 72)
     if pd.isna(term_months) or term_months is None:
         term_months = 72
-        
-    f1_months = calculate_fy_months(start_date, term_months, 72)
-    f2_months = calculate_fy_months(start_date, term_months, 30)
-    f3_months = calculate_fy_months(start_date, term_months, 48)
+
+    # Write dynamic start year in F2 to update all sequential year headers in Excel
+    ws.cell(row=2, column=6, value=start_year)
+
+    fitouts = list(params.get("Fitout Cost Breakdown", []))
+    fitout_lifes = list(params.get("Fitout Useful Lives", []))
+    fitout_active_months = params.get("Fitout Active Months Breakdown", [])
     
-    # Write months needed for Fitout 1, 2, 3
+    N = len(fitouts)
+    offset = 6 * (N - 3)
+    
+    # Insert new rows above row 20 if N > 3
+    if N > 3:
+        ws.insert_rows(20, amount=offset)
+        
+    # Write each Fitout phase
+    for k in range(N):
+        r_m = 3 + 6 * k      # Month needed row
+        r_c = 6 + 6 * k      # Investment Cost row
+        r_d = 7 + 6 * k      # Depreciation Time row
+        
+        ws.cell(row=r_m, column=1, value=f"Fitout Phase {k+1}")
+        ws.cell(row=r_m, column=4, value="Month needed")
+        ws.cell(row=r_m, column=5, value=f"=SUM(F{r_m}:O{r_m})")
+        
+        ws.cell(row=r_m+1, column=4, value="Month left")
+        ws.cell(row=r_m+1, column=5, value=f"=E{r_m}-SUM(F{r_m}:O{r_m})")
+        
+        ws.cell(row=r_c, column=1, value="Investment Cost")
+        ws.cell(row=r_c, column=2, value=fitouts[k])
+        ws.cell(row=r_c, column=4, value="Annual Depreciation Rate")
+        
+        ws.cell(row=r_d, column=1, value="Depreciation Time")
+        ws.cell(row=r_d, column=2, value=f"=E{r_m}/12")
+        ws.cell(row=r_d, column=4, value="used Depreciation")
+        
+        # Write active months
+        phase_months = fitout_active_months[k] if k < len(fitout_active_months) else {}
+        for c in range(6, 16):
+            fy = start_year + (c - 6)
+            col_char = openpyxl.utils.get_column_letter(c)
+            
+            # Write active months
+            ws.cell(row=r_m, column=c, value=phase_months.get(fy, 0))
+            # Write Annual Depreciation Rate formula
+            ws.cell(row=r_c, column=c, value=f"=IF({col_char}{r_m}<>0,$B${r_c}/$B${r_d},0)")
+            # Write used Depreciation formula
+            ws.cell(row=r_d, column=c, value=f"={col_char}{r_c}/12*{col_char}{r_m}")
+
+    # Total Fitout Cost cell B3
+    ws["B3"] = "=" + "+".join([f"B{6 + 6 * k}" for k in range(N)])
+    
+    # Calculate shifted row coordinates
+    r_area_fit = 21 + offset
+    r_area_mtr = 22 + offset
+    r_inv_year = 23 + offset
+    r_imp_int = 26 + offset
+    r_used_dep = 27 + offset
+    r_per_sqft = 29 + offset
+    r_per_sqmtr = 30 + offset
+    
+    # Update Area, NBV, Interest, and Used Depreciation formulas for Fitout
+    ws.cell(row=r_area_fit, column=4, value="Book value at Begin of FY")
+    ws.cell(row=r_area_fit, column=6, value="=B3")
+    for c in range(7, 16):
+        col_char = openpyxl.utils.get_column_letter(c)
+        prev_col_char = openpyxl.utils.get_column_letter(c - 1)
+        ws.cell(row=r_area_fit, column=c, value=f"={prev_col_char}{r_area_mtr}")
+        
+    ws.cell(row=r_area_mtr, column=4, value="Book value at End of FY")
     for c in range(6, 16):
-        fy = ws.cell(row=2, column=c).value
-        if isinstance(fy, (int, float)):
-            fy = int(fy)
-            # Fitout 1 (Row 3)
-            ws.cell(row=3, column=c, value=f1_months.get(fy, 0))
-            # Fitout 2 (Row 9)
-            ws.cell(row=9, column=c, value=f2_months.get(fy, 0))
-            # Fitout 3 (Row 15)
-            ws.cell(row=15, column=c, value=f3_months.get(fy, 0))
+        col_char = openpyxl.utils.get_column_letter(c)
+        ws.cell(row=r_area_mtr, column=c, value=f"={col_char}{r_area_fit}-{col_char}{r_used_dep}")
+        
+    ws.cell(row=r_inv_year, column=4, value="Average Net Book Value FY")
+    for c in range(6, 16):
+        col_char = openpyxl.utils.get_column_letter(c)
+        ws.cell(row=r_inv_year, column=c, value=f"=({col_char}{r_area_fit}+{col_char}{r_area_mtr})/2")
+        
+    ws.cell(row=r_imp_int, column=4, value="Impted Interest")
+    ws.cell(row=r_imp_int, column=5, value=f"=SUM(F{r_imp_int}:O{r_imp_int})")
+    for c in range(6, 16):
+        col_char = openpyxl.utils.get_column_letter(c)
+        ws.cell(row=r_imp_int, column=c, value=f"={col_char}{r_inv_year}*$B$4/12*{col_char}3")
+            
+    ws.cell(row=r_used_dep, column=4, value="Used Depreciation")
+    ws.cell(row=r_used_dep, column=5, value=f"=SUM(F{r_used_dep}:O{r_used_dep})")
+    for c in range(6, 16):
+        col_char = openpyxl.utils.get_column_letter(c)
+        ws.cell(row=r_used_dep, column=c, value="=" + "+".join([f"{col_char}{7 + 6 * k}" for k in range(N)]))
+        
+    for c in range(6, 16):
+        col_char = openpyxl.utils.get_column_letter(c)
+        ws.cell(row=r_per_sqft, column=c, value=f"=SUM({col_char}{r_imp_int}:{col_char}{r_used_dep})")
+        
+    ws.cell(row=r_per_sqmtr, column=4, value="Monthly Value ")
+    ws.cell(row=r_per_sqmtr, column=5, value=f"=IFERROR(SUM(F{r_imp_int}:O{r_imp_int}+F{r_used_dep}:O{r_used_dep})/E3,0)")
+
+    # ---------------- CAPEX SECTION ----------------
+    r_capex_header = 36 + offset
+    r_capex_cost = 37 + offset
+    r_capex_val = 38 + offset
+    
+    # Write Capex schedule by FY
+    capex_sched = params.get("Capex Schedule", {})
+    for c in range(6, 16):
+        fy = start_year + (c - 6)
+        ws.cell(row=r_capex_val, column=c, value=capex_sched.get(fy, 0.0))
+            
+    # Calculate and write active months for Capex tranches (Rows 40, 45, 50, 55, 60, 65, 70, 75 shifted)
+    num_capex_configured = len(capex_sched)
+    capex_lives = params.get("Capex Useful Lives", {})
+    for i in range(1, 9):
+        row_num = 40 + offset + 5 * (i - 1)
+        yr = start_year + (i - 1)
+        if i <= num_capex_configured:
+            if i == 1:
+                default_life = term_months
+            else:
+                first_year_months = 12 - start_date.month + 1
+                elapsed = first_year_months + 12 * (i - 2)
+                default_life = max(0, term_months - elapsed)
+            life = capex_lives.get(yr, default_life)
+            tranche_months = get_capex_tranche_months(start_date, term_months, i, life)
+        else:
+            tranche_months = {}
+            
+        for c in range(6, 16):
+            fy = start_year + (c - 6)
+            ws.cell(row=row_num, column=c, value=tranche_months.get(fy, 0))
+            
+        # Write/Update formulas for the Capex tranche to handle shifted row references
+        col_char_tranche = openpyxl.utils.get_column_letter(5 + i)
+        ws.cell(row=row_num, column=2, value=f"=+{col_char_tranche}{38+offset}")
+        ws.cell(row=row_num, column=5, value=f"=SUM(F{row_num}:O{row_num})")
+        
+        ws.cell(row=row_num+1, column=2, value=f"=E{row_num}/12")
+        ws.cell(row=row_num+1, column=5, value=f"=E{row_num}-SUM(F{row_num}:O{row_num})")
+        
+        for c in range(6, 16):
+            col_char = openpyxl.utils.get_column_letter(c)
+            ws.cell(row=row_num+2, column=c, value=f"=IF({col_char}{row_num}<>0,${col_char_tranche}${38+offset}/$B${row_num+1},0)")
+            ws.cell(row=row_num+3, column=c, value=f"={col_char}{row_num+2}/12*{col_char}{row_num}")
+            
+    # Update Capex book value formulas
+    r_cap_fit = 81 + offset
+    r_cap_mtr = 82 + offset
+    r_cap_year = 83 + offset
+    r_cap_imp = 86 + offset
+    r_cap_dep = 87 + offset
+    r_cap_per_sqft = 89 + offset
+    r_cap_per_sqmtr = 90 + offset
+    
+    ws.cell(row=r_cap_fit, column=2, value=f"=B{21+offset}")
+    ws.cell(row=r_cap_fit, column=6, value=f"=+F{38+offset}")
+    for c in range(7, 16):
+        col_char = openpyxl.utils.get_column_letter(c)
+        prev_col_char = openpyxl.utils.get_column_letter(c - 1)
+        ws.cell(row=r_cap_fit, column=c, value=f"={prev_col_char}{r_cap_mtr}+{col_char}{38+offset}")
+        
+    for c in range(6, 16):
+        col_char = openpyxl.utils.get_column_letter(c)
+        ws.cell(row=r_cap_mtr, column=c, value=f"={col_char}{r_cap_fit}-{col_char}{r_cap_dep}")
+        ws.cell(row=r_cap_year, column=c, value=f"=({col_char}{r_cap_fit}+{col_char}{r_cap_mtr})/2")
+        ws.cell(row=r_cap_imp, column=c, value=f"={col_char}{r_cap_year}*$B${38+offset}/12*{col_char}{40+offset}")
+        ws.cell(row=r_cap_dep, column=c, value="=" + "+".join([f"{col_char}{43 + offset + 5 * k}" for k in range(8)]))
+        ws.cell(row=r_cap_per_sqft, column=c, value=f"=SUM({col_char}{r_cap_imp}:{col_char}{r_cap_imp+2})")
+        
+    ws.cell(row=r_cap_imp, column=5, value=f"=SUM(F{r_cap_imp}:O{r_cap_imp})")
+    ws.cell(row=r_cap_dep, column=5, value=f"=SUM(F{r_cap_dep}:O{r_cap_dep})")
+    ws.cell(row=r_cap_per_sqmtr, column=5, value=f"=IFERROR(SUM(F{r_cap_imp}:O{r_cap_dep})/E{40+offset},0)")
+
+    # ---------------- PM SECTION ----------------
+    r_pm_total = 95 + offset
+    r_pm_per_sqft = 96 + offset
+    r_pm_per_sqmtr = 97 + offset
+    
+    # Write Maintenance (PM) schedule by FY
+    pm_sched = params.get("PM Schedule", {})
+    for c in range(6, 16):
+        fy = start_year + (c - 6)
+        ws.cell(row=r_pm_total, column=c, value=pm_sched.get(fy, 0.0))
+        
+    # Make PM total sum dynamic across all 10 years
+    ws.cell(row=r_pm_total, column=2, value=f"=SUM(F{r_pm_total}:O{r_pm_total})")
+    ws.cell(row=r_pm_per_sqft, column=2, value=f"=((B{r_pm_total}/B{21+offset}))/E3")
+    ws.cell(row=r_pm_per_sqmtr, column=2, value=f"=B{r_pm_per_sqft}*10.764")
 
 def simulate(params):
     """
     Simulates Capex & PM amortization schedules for UI preview.
     """
     start_date = params["Agreement Start Date"]
+    start_year = start_date.year
     imputed_rate = params["Imputed Interest Rate"]
-    
-    fitouts = params.get("Fitout Cost Breakdown", [params["Fitout Cost"], 0, 0])
-    while len(fitouts) < 3:
-        fitouts.append(0)
-        
-    capex_sched = params.get("Capex Schedule", {2026: 14000000.0, 2027: 12000000.0, 2028: 5000000.0, 2029: 6000000.0, 2030: 6000000.0})
-    pm_sched = params.get("PM Schedule", {2026: 1500000.0, 2027: 200000.0, 2028: 200000.0, 2029: 200000.0, 2030: 200000.0, 2031: 200000.0})
-    
-    years = list(range(2026, 2036))
-    
-    # Fitout 1, 2, 3 calculations
     term_months = params.get("Lease Term Months", 72)
     if pd.isna(term_months) or term_months is None:
         term_months = 72
         
-    f1_months = calculate_fy_months(start_date, term_months, 72)
-    f2_months = calculate_fy_months(start_date, term_months, 30)
-    f3_months = calculate_fy_months(start_date, term_months, 48)
+    fitouts = list(params.get("Fitout Cost Breakdown", []))
+    fitout_lifes = list(params.get("Fitout Useful Lives", []))
+    fitout_active_months = params.get("Fitout Active Months Breakdown", [])
     
-    # Amortization variables
-    f1_cost, f2_cost, f3_cost = fitouts[0], fitouts[1], fitouts[2]
-    total_fitout_cost = sum(fitouts)
+    N = len(fitouts)
+    while len(fitouts) < 3:
+        fitouts.append(0.0)
+    while len(fitout_lifes) < 3:
+        default_lifes = [72, 30, 48]
+        fitout_lifes.append(default_lifes[len(fitout_lifes)])
+    while len(fitout_active_months) < 3:
+        fitout_active_months.append({})
+        
+    capex_sched = params.get("Capex Schedule", {})
+    pm_sched = params.get("PM Schedule", {})
+    
+    years = list(range(start_year, start_year + 10))
     
     # Capex section calculations
-    # Capex is split into 5 tranches (FY26-FY30)
-    # Tranche 1: 14M (72 mo), Tranche 2: 12M (60 mo), Tranche 3: 5M (48 mo), Tranche 4: 6M (36 mo), Tranche 5: 6M (24 mo)
-    tranches = [
-        {"cost": capex_sched.get(2026, 0.0), "life": 72, "start_year": 2026},
-        {"cost": capex_sched.get(2027, 0.0), "life": 60, "start_year": 2027},
-        {"cost": capex_sched.get(2028, 0.0), "life": 48, "start_year": 2028},
-        {"cost": capex_sched.get(2029, 0.0), "life": 36, "start_year": 2029},
-        {"cost": capex_sched.get(2030, 0.0), "life": 24, "start_year": 2030}
-    ]
-    
+    tranches = []
+    capex_lives = params.get("Capex Useful Lives", {})
+    for i in range(1, 9):
+        yr = start_year + i - 1
+        cost = capex_sched.get(yr, 0.0)
+        if i == 1:
+            default_life = term_months
+        else:
+            first_year_months = 12 - start_date.month + 1
+            elapsed = first_year_months + 12 * (i - 2)
+            default_life = max(0, term_months - elapsed)
+            
+        life = capex_lives.get(yr, default_life)
+        tranches.append({
+            "cost": cost,
+            "life": life,
+            "start_year": yr
+        })
+        
     rows = []
-    
-    # Keep track of book values for Capex
     current_capex_book = sum([t["cost"] for t in tranches])
     
     for yr in years:
-        m1 = f1_months.get(yr, 0)
-        m2 = f2_months.get(yr, 0)
-        m3 = f3_months.get(yr, 0)
-        
-        # Used Depreciation Fitouts
-        dep1 = (f1_cost / (72 / 12) / 12) * m1 if m1 > 0 else 0.0
-        dep2 = (f2_cost / (30 / 12) / 12) * m2 if m2 > 0 else 0.0
-        dep3 = (f3_cost / (48 / 12) / 12) * m3 if m3 > 0 else 0.0
-        total_fitout_dep = dep1 + dep2 + dep3
-        
+        # Calculate dynamic Fitout depreciation for all configured phases
+        total_fitout_dep = 0.0
+        active_f_months = 0
+        for k in range(N):
+            cost_k = fitouts[k]
+            life_k = fitout_lifes[k]
+            # Use custom months if present, otherwise default distribute
+            phase_m = fitout_active_months[k] if k < len(fitout_active_months) else {}
+            m_k = phase_m.get(yr, calculate_fy_months(start_date, term_months, life_k).get(yr, 0))
+            if k == 0:
+                active_f_months = m_k  # use first phase active months for imputed interest active term reference
+            dep_k = (cost_k / (life_k / 12) / 12) * m_k if m_k > 0 and life_k > 0 else 0.0
+            total_fitout_dep += dep_k
+            
         # Capex Depreciation
-        # For each Capex tranche, calculate months needed and used depreciation
         capex_dep = 0.0
-        for t in tranches:
-            if yr >= t["start_year"]:
-                # Calculate active months in yr
-                active_months = calculate_fy_months(datetime.date(t["start_year"], 1, 1), term_months, t["life"]).get(yr, 0)
+        for idx, t in enumerate(tranches):
+            if yr >= t["start_year"] and t["life"] > 0:
+                active_months = get_capex_tranche_months(start_date, term_months, idx + 1, t["life"]).get(yr, 0)
                 if active_months > 0:
                     capex_dep += (t["cost"] / t["life"]) * active_months
                     
         # Capex Imputed Interest
-        # In specimen: Average net book value * WACC / 12 * active_months
-        # Let's approximate the average book value for Capex in yr
-        active_term = calculate_fy_months(start_date, term_months, 72).get(yr, 0)
+        active_term = calculate_fy_months(start_date, term_months, term_months).get(yr, 0)
         capex_imputed_interest = 0.0
         if active_term > 0:
-            # Simple linear approximation for preview
             capex_imputed_interest = (current_capex_book - capex_dep / 2.0) * imputed_rate / 12.0 * active_term
             current_capex_book -= capex_dep
             
         rows.append({
             "Fiscal Year": yr,
-            "Fitout Months Active": m1,
+            "Fitout Months Active": active_f_months,
             "Fitout Amortization": round(total_fitout_dep, 2),
             "Capex Injected": round(capex_sched.get(yr, 0.0), 2),
             "Capex Amortization": round(capex_dep, 2),
