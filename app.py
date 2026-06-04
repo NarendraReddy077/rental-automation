@@ -11,6 +11,7 @@ import sheets.lease_size as lease_size
 import sheets.capex_pm as capex_pm
 import sheets.security_deposit as security_deposit
 from sheets.capex_pm import calculate_fy_months
+from sheets.input_parser import parse_input_xlsx
 
 st.set_page_config(
     page_title="Siemens - Rental Automation System",
@@ -37,374 +38,6 @@ if style_css:
     st.markdown(f"<style>{style_css}</style>", unsafe_allow_html=True)
 
 
-# --- DYNAMIC EXCEL PARSER ---
-def parse_input_xlsx(file_bytes):
-    """Parses user-uploaded input Excel sheet with extensive error resilience."""
-    try:
-        # Resolve raw bytes regardless of input type (bytes or file-like)
-        if hasattr(file_bytes, "getvalue"):
-            raw_data = file_bytes.getvalue()
-        elif hasattr(file_bytes, "read"):
-            try:
-                file_bytes.seek(0)
-            except Exception:
-                pass
-            raw_data = file_bytes.read()
-        else:
-            raw_data = file_bytes
-            
-        df = pd.read_excel(io.BytesIO(raw_data), sheet_name="Main")
-        df.columns = [c.strip() for c in df.columns]
-        
-        # Build dictionary from Name-Value pairs
-        raw_params = {}
-        for idx, row in df.iterrows():
-            if 'Field Name' in df.columns and 'Sample Value' in df.columns:
-                name = str(row['Field Name']).strip()
-                val = row['Sample Value']
-                if pd.isna(val):
-                    val = None
-                raw_params[name] = val
-        
-        # Helper to parse dates
-        def parse_date(date_val, default=None):
-            if date_val is None or pd.isna(date_val):
-                return default
-            if isinstance(date_val, (datetime.date, datetime.datetime)):
-                return date_val.date() if isinstance(date_val, datetime.datetime) else date_val
-            try:
-                return pd.to_datetime(str(date_val).strip()).date()
-            except Exception:
-                return default
-
-        # Safely extract values from raw_params with fallbacks
-        def get_str(name, default):
-            v = raw_params.get(name)
-            if v is None or pd.isna(v) or str(v).strip() == "":
-                return default
-            return str(v).strip()
-
-        def get_float(name, default):
-            v = raw_params.get(name)
-            if v is None or pd.isna(v):
-                return default
-            try:
-                return float(v)
-            except Exception:
-                return default
-
-        def get_int(name, default):
-            v = raw_params.get(name)
-            if v is None or pd.isna(v):
-                return default
-            try:
-                return int(float(v))
-            except Exception:
-                return default
-
-        # Normalize values
-        params = {}
-        params["Lease ID"] = get_str("Lease ID", "LEASE-001")
-        params["REU Name"] = get_str("REU Name", "IN-CHEK2")
-        params["Lease Type"] = get_str("Lease Type", "Office")
-        params["Building Name"] = get_str("Building Name", "SKCL Tech Park")
-        params["City"] = get_str("City", "Chennai")
-        params["Country"] = get_str("Country", "India")
-        params["Currency"] = get_str("Currency", "INR")
-        
-        params["Chargeable Area Sqft"] = get_float("Chargeable Area Sqft", 9515.0)
-        params["Parking Slots"] = get_int("Parking Slots", 20)
-        
-        start_date = parse_date(raw_params.get("Agreement Start Date"), datetime.date(2026, 4, 1))
-        end_date = parse_date(raw_params.get("Agreement End Date"), datetime.date(2031, 3, 31))
-        params["Agreement Start Date"] = start_date
-        params["Agreement End Date"] = end_date
-        params["Rent Start Date"] = parse_date(raw_params.get("Rent Start Date"), start_date)
-        
-        # Lease Term calculations
-        term_months = raw_params.get("Lease Term Months")
-        if term_months is None or pd.isna(term_months):
-            # Calculate months from start/end dates
-            term_months = round((end_date - start_date).days / 30.4167)
-        else:
-            try:
-                term_months = int(float(term_months))
-            except Exception:
-                term_months = round((end_date - start_date).days / 30.4167)
-        params["Lease Term Months"] = term_months
-        
-        params["Rent Per Sqft"] = get_float("Rent Per Sqft", 120.0)
-        params["Quoted CAM"] = get_float("Quoted CAM", 15.48)
-        
-        esc_val = raw_params.get("Escalation %", 0.15)
-        params["Escalation %"] = float(esc_val) if esc_val is not None and not pd.isna(esc_val) else 0.15
-        
-        # Robust check for frequency e.g. 0.36 -> 36 months
-        freq_val = raw_params.get("Escalation Frequency Months", 36)
-        if freq_val is not None and not pd.isna(freq_val):
-            try:
-                freq_val = float(freq_val)
-                if freq_val < 1.0:
-                    freq_val = int(round(freq_val * 100))
-                else:
-                    freq_val = int(freq_val)
-            except Exception:
-                freq_val = 36
-        else:
-            freq_val = 36
-        params["Escalation Frequency Months"] = freq_val
-        
-        params["CAM Escalation %"] = 0.05
-        params["Billing Frequency"] = get_str("Billing Frequency", "Monthly")
-        params["Security Deposit Months"] = get_float("Security Deposit Months", 6.0)
-        params["Security Deposit Amount"] = get_float("Security Deposit Amount", 11418000.0)
-        params["Refundable Deposit"] = get_str("Refundable Deposit", "Yes")
-        
-        # Capex & Cost factors
-        total_fitout = get_float("Fitout Cost", 34000000.0)
-        params["Fitout Cost"] = total_fitout
-        params["Useful Life Years"] = get_float("Useful Life Years", 5.0)
-        params["Residual Value"] = get_float("Residual Value", 0.0)
-        params["Discount Rate"] = get_float("Discount Rate", 0.08)
-        params["Incremental Borrowing Rate"] = get_float("Incremental Borrowing Rate", 0.08)
-        params["Cost of Capital"] = get_float("Cost of Capital", 0.105)
-        params["Addnl.Deposit -energy(Refundable)"] = get_float("Addnl.Deposit -energy(Refundable)", 500000.0)
-        
-        # Add new parameters missing in original but parsed if they exist
-        params["Imputed Interest Rate"] = get_float("Imputed Interest Rate", 0.0711)
-        params["Ready Reckoner Rate"] = get_float("Ready Reckoner Rate", 15000.0)
-        params["Exchange Rate"] = get_float("Exchange Rate", 105.02)
-        params["Incremental Restoration Cost Sqft"] = get_float("Incremental Restoration Cost Sqft", 82.6)
-        
-        total_pm = get_float("PM Cost Over Lease", 2500000.0)
-        params["PM Cost Over Lease"] = total_pm
-
-        # Try to parse dynamic schedules from CAPEX and PM sheet if it exists
-        fitout_breakdown = []
-        fitout_lifes = []
-        fitout_active_months_breakdown = []
-        capex_sched = {}
-        capex_lives = {}
-        pm_sched = {}
-        
-        try:
-            wb = openpyxl.load_workbook(io.BytesIO(raw_data), data_only=True)
-            if "CAPEX and PM" in wb.sheetnames:
-                ws = wb["CAPEX and PM"]
-                
-                # 1. Parse fitout costs, useful lives and active months dynamically (up to 8 phases)
-                for k in range(8):
-                    r_c = 6 + 6 * k
-                    r_m = 3 + 6 * k
-                    # Check if this phase exists in sheet (we check row label at column A)
-                    lbl = ws.cell(row=r_c, column=1).value
-                    if lbl == "Investment Cost":
-                        cost_val = ws.cell(row=r_c, column=2).value
-                        life_val_months = ws.cell(row=r_m, column=5).value
-                        
-                        cost = float(cost_val) if isinstance(cost_val, (int, float)) else 0.0
-                        life = int(life_val_months) if isinstance(life_val_months, (int, float)) else 72
-                        
-                        fitout_breakdown.append(cost)
-                        fitout_lifes.append(life)
-                        
-                        # Parse active months for this phase year-by-year (columns F to O)
-                        phase_m = {}
-                        for c in range(6, 16):
-                            yr_val = ws.cell(row=2, column=c).value
-                            m_val = ws.cell(row=r_m, column=c).value
-                            try:
-                                yr = int(float(str(yr_val).strip()))
-                            except (ValueError, TypeError):
-                                continue
-                            phase_m[yr] = int(m_val) if isinstance(m_val, (int, float)) else 0
-                        fitout_active_months_breakdown.append(phase_m)
-                
-                # 2. Parse Capex schedule and useful lives from row 36 (years), row 38 (values), and column E (active months)
-                # Wait! Since we might have inserted rows, let's find the Capex headers row dynamically!
-                # We can search for the row where A is "Investment name" and B is "Capex"
-                r_capex_header = 36
-                for r in range(1, 100):
-                    if ws.cell(row=r, column=1).value == "Investment name" and ws.cell(row=r, column=2).value == "Capex":
-                        r_capex_header = r
-                        break
-                
-                # Capex values are in row r_capex_header + 2
-                r_capex_val = r_capex_header + 2
-                for c in range(6, 16):
-                    yr_val = ws.cell(row=r_capex_header, column=c).value
-                    val = ws.cell(row=r_capex_val, column=c).value
-                    # Tranche i active months row is: r_capex_header + 4 + 5 * (i-1)
-                    tranche_row = r_capex_header + 4 + 5 * (c - 6)
-                    life_val = ws.cell(row=tranche_row, column=5).value
-                    try:
-                        yr = int(float(str(yr_val).strip()))
-                    except (ValueError, TypeError):
-                        continue
-                    try:
-                        val_num = float(val) if val is not None else 0.0
-                    except (ValueError, TypeError):
-                        val_num = 0.0
-                    if val_num > 0:
-                        capex_sched[yr] = val_num
-                        try:
-                            capex_lives[yr] = int(life_val) if life_val is not None else 0
-                        except (ValueError, TypeError):
-                            pass
-                            
-                # 3. Parse PM schedule from PM row. Let's find PM row dynamically!
-                # PM is the row where column A is "Basic and project maintenance"
-                r_pm = 95
-                for r in range(1, 150):
-                    if ws.cell(row=r, column=1).value == "Basic and project maintenance":
-                        r_pm = r
-                        break
-                # PM year headers are in row 2 (which is always row 2)
-                for c in range(6, 16):
-                    yr_val = ws.cell(row=2, column=c).value
-                    val = ws.cell(row=r_pm, column=c).value
-                    try:
-                        yr = int(float(str(yr_val).strip()))
-                    except (ValueError, TypeError):
-                        continue
-                    try:
-                        val_num = float(val) if val is not None else 0.0
-                    except (ValueError, TypeError):
-                        val_num = 0.0
-                    if val_num > 0:
-                        pm_sched[yr] = val_num
-            else:
-                # Parse from Main sheet Name-Value pairs (raw_params)
-                # 1. Fitout breakdown costs
-                for k in range(1, 9):
-                    key = f"Fitout Phase {k} Cost"
-                    if key in raw_params:
-                        val = raw_params[key]
-                        if val is not None and not pd.isna(val):
-                            fitout_breakdown.append(float(val))
-                            
-                # 2. Capex schedule
-                for key, val in raw_params.items():
-                    if key.startswith("Capex FY"):
-                        try:
-                            yr = int(key.replace("Capex FY", "").strip())
-                            if val is not None and not pd.isna(val):
-                                capex_sched[yr] = float(val)
-                        except Exception:
-                            pass
-                            
-                # 3. PM schedule
-                for key, val in raw_params.items():
-                    if key.startswith("PM FY"):
-                        try:
-                            yr = int(key.replace("PM FY", "").strip())
-                            if val is not None and not pd.isna(val):
-                                pm_sched[yr] = float(val)
-                        except Exception:
-                            pass
-        except Exception:
-            pass
-
-        # Fallbacks for empty/non-existent sheet cases
-        start_year = start_date.year
-        term_months = params["Lease Term Months"]
-        
-        was_breakdown_parsed = (len(fitout_breakdown) > 0)
-        
-        # If fitout breakdown was not parsed, initialize default 3 phases
-        if not fitout_breakdown:
-            fitout_breakdown = [14000000.0, 5000000.0, 15000000.0]
-            fitout_lifes = [72, 30, 48]
-            
-        if was_breakdown_parsed:
-            # Update Fitout Cost to match sum of parsed breakdown
-            total_fitout = sum(fitout_breakdown)
-            params["Fitout Cost"] = total_fitout
-        else:
-            # If fitout total from Main doesn't match sum of parsed breakdown, scale it
-            if abs(total_fitout - sum(fitout_breakdown)) > 1.0:
-                if sum(fitout_breakdown) > 0:
-                    scale = total_fitout / sum(fitout_breakdown)
-                    fitout_breakdown = [f * scale for f in fitout_breakdown]
-                else:
-                    num_p = len(fitout_breakdown) if fitout_breakdown else 3
-                    fitout_breakdown = [total_fitout / num_p] * num_p
-
-        # If fitout_lifes is empty, initialize default lives
-        if not fitout_lifes:
-            default_lifes = [72, 30, 48]
-            fitout_lifes = []
-            for idx in range(len(fitout_breakdown)):
-                if idx < len(default_lifes):
-                    fitout_lifes.append(default_lifes[idx])
-                else:
-                    fitout_lifes.append(int(params["Useful Life Years"] * 12))
-
-        # Fitout active months fallback
-        if not fitout_active_months_breakdown:
-            fitout_active_months_breakdown = []
-            for life in fitout_lifes:
-                fitout_active_months_breakdown.append(
-                    calculate_fy_months(start_date, term_months, life)
-                )
-
-        # Capex schedule fallback
-        if not capex_sched:
-            capex_sched = {
-                start_year: 14000000.0,
-                start_year + 1: 12000000.0,
-                start_year + 2: 5000000.0,
-                start_year + 3: 6000000.0,
-                start_year + 4: 6000000.0
-            }
-            # Scale Capex if total Fitout Cost changed
-            if abs(total_fitout - 34000000.0) > 1.0:
-                scale = total_fitout / 34000000.0
-                for k in capex_sched:
-                    capex_sched[k] *= scale
-
-        # Capex useful lives fallback
-        if not capex_lives:
-            for idx, yr in enumerate(sorted(capex_sched.keys())):
-                if idx == 0:
-                    life = term_months
-                else:
-                    first_year_months = 12 - start_date.month + 1
-                    elapsed = first_year_months + 12 * (idx - 1)
-                    life = max(0, term_months - elapsed)
-                capex_lives[yr] = life
-
-        # PM schedule fallback
-        was_pm_parsed = (len(pm_sched) > 0)
-        if not pm_sched:
-            pm_sched = {
-                start_year: 1500000.0,
-                start_year + 1: 200000.0,
-                start_year + 2: 200000.0,
-                start_year + 3: 200000.0,
-                start_year + 4: 200000.0,
-                start_year + 5: 200000.0
-            }
-            # Scale PM if total PM cost changed
-            if abs(total_pm - 2500000.0) > 1.0:
-                scale = total_pm / 2500000.0
-                for k in pm_sched:
-                    pm_sched[k] *= scale
-                    
-        if was_pm_parsed:
-            total_pm = sum(pm_sched.values())
-            params["PM Cost Over Lease"] = total_pm
-                    
-        params["Fitout Cost Breakdown"] = fitout_breakdown
-        params["Fitout Useful Lives"] = fitout_lifes
-        params["Fitout Active Months Breakdown"] = fitout_active_months_breakdown
-        params["Capex Schedule"] = capex_sched
-        params["Capex Useful Lives"] = capex_lives
-        params["PM Schedule"] = pm_sched
-
-        return params, None
-    except Exception as e:
-        return {}, str(e)
 
 
 def compile_output_workbook(template_path, params):
@@ -591,7 +224,7 @@ with st.sidebar.expander("▶ Real Estate & Lease Properties", expanded=True):
     reu_name = st.text_input("REU Name", value=params["REU Name"], key=f"reu_name{key_suffix}", help="Unique identifier code for the Real Estate Unit.")
     bldg_name = st.text_input("Building Name", value=params["Building Name"], key=f"bldg_name{key_suffix}", help="The name of the building/facility where the premises are leased.")
     city = st.text_input("City", value=params["City"], key=f"city{key_suffix}", help="The city location of the leased property.")
-    area = st.number_input("Chargeable Area (Sq.ft.)", value=int(params["Chargeable Area Sqft"]), key=f"area{key_suffix}", step=100, help="The chargeable/rentable area in square feet.")
+    area = st.number_input("Chargeable Area (sq ft)", value=int(params["Chargeable Area Sqft"]), key=f"area{key_suffix}", step=100, help="The chargeable/rentable area in square feet.")
     
     col_d1, col_d2 = st.columns(2)
     with col_d1:
@@ -599,15 +232,15 @@ with st.sidebar.expander("▶ Real Estate & Lease Properties", expanded=True):
     with col_d2:
         end_date = st.date_input("End Date", value=params["Agreement End Date"], key=f"end_date{key_suffix}", help="The official lease agreement expiration date.")
         
-    rent_sqft = st.number_input("Quoted Rentals (per Sqft/mo)", value=float(params["Rent Per Sqft"]), key=f"rent_sqft{key_suffix}", step=1.0, help="The starting rental rate per square foot per month.")
-    cam_sqft = st.number_input("Quoted CAM (per Sqft/mo)", value=float(params["Quoted CAM"]), key=f"cam_sqft{key_suffix}", step=0.1, help="The starting Common Area Maintenance (CAM) rate per square foot per month.")
+    rent_sqft = st.number_input("Quoted Rent (per sq ft/month)", value=float(params["Rent Per Sqft"]), key=f"rent_sqft{key_suffix}", step=1.0, help="The starting rental rate per square foot per month.")
+    cam_sqft = st.number_input("Quoted CAM (per sq ft/month)", value=float(params["Quoted CAM"]), key=f"cam_sqft{key_suffix}", step=0.1, help="The starting Common Area Maintenance (CAM) rate per square foot per month.")
     
     rent_esc = st.slider("Rent Escalation %", min_value=0.0, max_value=0.5, value=float(params["Escalation %"]), key=f"rent_esc{key_suffix}", step=0.01, help="The rental rate escalation percentage (e.g. 0.15 = 15%).")
     rent_esc_freq = st.number_input("Rent Escalation Freq (Months)", value=int(params["Escalation Frequency Months"]), key=f"rent_esc_freq{key_suffix}", step=12, help="Interval in months between rent escalations (typically 36 months).")
     cam_esc = st.slider("CAM Escalation %", min_value=0.0, max_value=0.2, value=float(params["CAM Escalation %"]), key=f"cam_esc{key_suffix}", step=0.01, help="Annual escalation percentage applied to CAM rates.")
     
-    sec_deposit = st.number_input("Security Deposit Amount", value=int(params["Security Deposit Amount"]), key=f"sec_deposit{key_suffix}", step=50000, help="Interest-free refundable security deposit amount.")
-    energy_dep = st.number_input("Energy Deposit Amount", value=int(params["Addnl.Deposit -energy(Refundable)"]), key=f"energy_dep{key_suffix}", step=10000, help="Additional refundable security deposit specifically for power/utilities.")
+    sec_deposit = st.number_input("Security Deposit Amount (INR)", value=int(params["Security Deposit Amount"]), key=f"sec_deposit{key_suffix}", step=50000, help="Interest-free refundable security deposit amount.")
+    energy_dep = st.number_input("Energy Deposit Amount (INR)", value=int(params["Addnl.Deposit -energy(Refundable)"]), key=f"energy_dep{key_suffix}", step=10000, help="Additional refundable security deposit specifically for power/utilities.")
 
 # Expander 2: CAPEX & PM Investment Schedule
 with st.sidebar.expander("▶ CAPEX & PM Schedule"):
@@ -617,8 +250,9 @@ with st.sidebar.expander("▶ CAPEX & PM Schedule"):
     
     # Filter out zeros from breakdown to determine configured phases
     non_zero_fitouts = [f for f in fitout_breakdown if f > 0]
-    default_num_fitouts = max(1, min(8, len(non_zero_fitouts)))
-    num_fitouts = st.selectbox("Number of Fitout Phases", list(range(1, 9)), index=default_num_fitouts - 1, key=f"num_fitouts{key_suffix}", help="Select the number of dynamic fitout phases.")
+    default_num_fitouts = max(1, len(non_zero_fitouts))
+    max_fitouts = max(8, default_num_fitouts)
+    num_fitouts = st.selectbox("Number of Fitout Phases", list(range(1, max_fitouts + 1)), index=default_num_fitouts - 1, key=f"num_fitouts{key_suffix}", help="Select the number of dynamic fitout phases.")
     
     fitout_costs = []
     fitout_useful_lives = []
@@ -666,11 +300,12 @@ with st.sidebar.expander("▶ CAPEX & PM Schedule"):
     
     # Determine default number of years based on max year configured
     if non_zero_capex_years:
-        default_num_capex = max(1, min(8, max(non_zero_capex_years) - start_year + 1))
+        default_num_capex = max(1, max(non_zero_capex_years) - start_year + 1)
     else:
         default_num_capex = 5
         
-    num_capex = st.selectbox("Number of Capex Years", list(range(1, 9)), index=default_num_capex - 1, key=f"num_capex{key_suffix}", help="Select the number of years for CAPEX injection.")
+    max_capex = max(8, default_num_capex)
+    num_capex = st.selectbox("Number of Capex Years", list(range(1, max_capex + 1)), index=default_num_capex - 1, key=f"num_capex{key_suffix}", help="Select the number of years for CAPEX injection.")
     
     capex_schedule = {}
     capex_useful_lives = {}
@@ -709,11 +344,12 @@ with st.sidebar.expander("▶ CAPEX & PM Schedule"):
     non_zero_pm_years = [y for y, val in pm_dict.items() if val > 0]
     
     if non_zero_pm_years:
-        default_num_pm = max(1, min(10, max(non_zero_pm_years) - start_year + 1))
+        default_num_pm = max(1, max(non_zero_pm_years) - start_year + 1)
     else:
         default_num_pm = 6
         
-    num_pm = st.selectbox("Number of PM Years", list(range(1, 11)), index=default_num_pm - 1, key=f"num_pm{key_suffix}", help="Select the number of years for Preventive Maintenance schedule.")
+    max_pm = max(10, default_num_pm)
+    num_pm = st.selectbox("Number of PM Years", list(range(1, max_pm + 1)), index=default_num_pm - 1, key=f"num_pm{key_suffix}", help="Select the number of years for Preventive Maintenance schedule.")
     
     pm_schedule = {}
     for i in range(num_pm):
@@ -731,8 +367,8 @@ with st.sidebar.expander("▶ Rates & ARO Restoration"):
     wacc = st.slider("Cost of Capital (WACC) %", min_value=0.0, max_value=0.25, value=float(params["Cost of Capital"]), key=f"wacc{key_suffix}", step=0.005, help="Weighted Average Cost of Capital used for investment analysis and discounting cash flows.")
     borrow_rate = st.slider("Incremental Borrowing Rate %", min_value=0.0, max_value=0.25, value=float(params["Incremental Borrowing Rate"]), key=f"borrow_rate{key_suffix}", step=0.005, help="Incremental Borrowing Rate (IBR) used to calculate the lease liability.")
     imputed_rate = st.slider("Imputed Interest Rate %", min_value=0.0, max_value=0.20, value=float(params["Imputed Interest Rate"]), key=f"imputed_rate{key_suffix}", step=0.001, help="The implicit rate of interest in the lease, or estimated discount rate.")
-    reckoner_rate = st.number_input("Ready Reckoner Rate (INR/sqm)", value=float(params["Ready Reckoner Rate"]), key=f"reckoner_rate{key_suffix}", step=1000.0, help="Government-determined Ready Reckoner Rate used for stamp duty / valuation.")
-    aro_rate = st.number_input("Restoration Cost per Sqft (ARO)", value=float(params["Incremental Restoration Cost Sqft"]), key=f"aro_rate{key_suffix}", step=5.0, help="Estimated asset restoration cost per square foot at lease end (Asset Retirement Obligation).")
+    reckoner_rate = st.number_input("Ready Reckoner Rate (INR/sq m)", value=float(params["Ready Reckoner Rate"]), key=f"reckoner_rate{key_suffix}", step=1000.0, help="Government-determined Ready Reckoner Rate used for stamp duty / valuation.")
+    aro_rate = st.number_input("Restoration Cost per Sq ft (ARO)", value=float(params["Incremental Restoration Cost Sqft"]), key=f"aro_rate{key_suffix}", step=5.0, help="Estimated asset restoration cost per square foot at lease end (Asset Retirement Obligation).")
     exchange_rate = st.number_input("Forex Rate (INR/Euro)", value=float(params["Exchange Rate"]), key=f"exchange_rate{key_suffix}", step=0.1, help="The foreign currency exchange rate (INR per 1 Euro) for reporting.")
 
 # Pack overrides into active UI parameters
