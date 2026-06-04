@@ -165,9 +165,9 @@ section[data-testid="stSidebar"] [data-testid="stTooltipHoverTarget"] svg,
 section[data-testid="stSidebar"] [data-testid="stHelpIcon"] svg,
 section[data-testid="stSidebar"] svg[class*="stTooltipIcon"],
 section[data-testid="stSidebar"] .stTooltipIcon svg {
-    fill: #cfdb8d !important;
-    stroke: #cfdb8d !important;
-    color: #cfdb8d !important;
+    fill: #615ce8 !important;
+    stroke: #615ce8 !important;
+    color: #615ce8 !important;
     width: 10px !important;
     height: 10px !important;
     transition: transform 0.2s ease-in-out, filter 0.2s ease !important;
@@ -179,9 +179,9 @@ section[data-testid="stSidebar"] [data-testid="stHelpIcon"]:hover svg,
 section[data-testid="stSidebar"] svg[class*="stTooltipIcon"]:hover,
 section[data-testid="stSidebar"] .stTooltipIcon:hover svg {
     transform: scale(1.15) !important;
-    fill: #cfdb8d !important;
-    stroke: #cfdb8d !important;
-    color: #cfdb8d !important;
+    fill: #615ce8 !important;
+    stroke: #615ce8 !important;
+    color: #615ce8 !important;
     filter: drop-shadow(0 0 5px rgba(96, 165, 250, 0.8)) !important;
 }
 
