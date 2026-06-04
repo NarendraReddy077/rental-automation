@@ -210,13 +210,13 @@ default_params = {
     "Escalation %": 0.15,
     "Escalation Frequency Months": 36,
     "CAM Escalation %": 0.05,
-    "Security Deposit Amount": 11418000.0,
-    "Addnl.Deposit -energy(Refundable)": 500000.0,
-    "Fitout Cost": 34000000.0,
-    "Fitout Cost Breakdown": [14000000.0, 5000000.0, 15000000.0],
-    "Capex Schedule": {2026: 14000000.0, 2027: 12000000.0, 2028: 5000000.0, 2029: 6000000.0, 2030: 6000000.0},
-    "PM Cost Over Lease": 2500000.0,
-    "PM Schedule": {2026: 1500000.0, 2027: 200000.0, 2028: 200000.0, 2029: 200000.0, 2030: 200000.0, 2031: 200000.0},
+    "Security Deposit Amount": 11418000,
+    "Addnl.Deposit -energy(Refundable)": 500000,
+    "Fitout Cost": 34000000,
+    "Fitout Cost Breakdown": [14000000, 5000000, 15000000],
+    "Capex Schedule": {2026: 14000000, 2027: 12000000, 2028: 5000000, 2029: 6000000, 2030: 6000000},
+    "PM Cost Over Lease": 2500000,
+    "PM Schedule": {2026: 1500000, 2027: 200000, 2028: 200000, 2029: 200000, 2030: 200000, 2031: 200000},
     "Cost of Capital": 0.105,
     "Discount Rate": 0.08,
     "Incremental Borrowing Rate": 0.08,
@@ -262,36 +262,36 @@ with st.sidebar.expander("▶ Real Estate & Lease Properties", expanded=True):
     rent_esc_freq = st.number_input("Rent Escalation Freq (Months)", value=int(params["Escalation Frequency Months"]), step=12, help="Interval in months between rent escalations (typically 36 months).")
     cam_esc = st.slider("CAM Escalation %", min_value=0.0, max_value=0.2, value=float(params["CAM Escalation %"]), step=0.01, help="Annual escalation percentage applied to CAM rates.")
     
-    sec_deposit = st.number_input("Security Deposit Amount", value=float(params["Security Deposit Amount"]), step=50000.0, help="Interest-free refundable security deposit amount.")
-    energy_dep = st.number_input("Energy Deposit Amount", value=float(params["Addnl.Deposit -energy(Refundable)"]), step=10000.0, help="Additional refundable security deposit specifically for power/utilities.")
+    sec_deposit = st.number_input("Security Deposit Amount", value=int(params["Security Deposit Amount"]), step=50000, help="Interest-free refundable security deposit amount.")
+    energy_dep = st.number_input("Energy Deposit Amount", value=int(params["Addnl.Deposit -energy(Refundable)"]), step=10000, help="Additional refundable security deposit specifically for power/utilities.")
 
 # Expander 2: CAPEX & PM Investment Schedule
 with st.sidebar.expander("▶ CAPEX & PM Schedule"):
     st.markdown("**Fitout Investments (Breakdown)**")
-    fitout_breakdown = params.get("Fitout Cost Breakdown", [14000000.0, 5000000.0, 15000000.0])
-    fitout_1 = st.number_input("Fitout Phase 1 Cost", value=float(fitout_breakdown[0]), step=100000.0, help="Capital expenditure for phase 1 of fitout works.")
-    fitout_2 = st.number_input("Fitout Phase 2 Cost", value=float(fitout_breakdown[1]), step=100000.0, help="Capital expenditure for phase 2 of fitout works.")
-    fitout_3 = st.number_input("Fitout Phase 3 Cost", value=float(fitout_breakdown[2]), step=100000.0, help="Capital expenditure for phase 3 of fitout works.")
+    fitout_breakdown = params.get("Fitout Cost Breakdown", [14000000, 5000000, 15000000])
+    fitout_1 = st.number_input("Fitout Phase 1 Cost", value=int(fitout_breakdown[0]), step=100000, help="Capital expenditure for phase 1 of fitout works.")
+    fitout_2 = st.number_input("Fitout Phase 2 Cost", value=int(fitout_breakdown[1]), step=100000, help="Capital expenditure for phase 2 of fitout works.")
+    fitout_3 = st.number_input("Fitout Phase 3 Cost", value=int(fitout_breakdown[2]), step=100000, help="Capital expenditure for phase 3 of fitout works.")
     
     fitout_total = fitout_1 + fitout_2 + fitout_3
     st.info(f"Total Fitout Cost: {params['Currency']} {fitout_total:,.2f}")
     
     st.markdown("**Capex Investments by Year**")
-    capex_dict = params.get("Capex Schedule", {2026: 14000000.0, 2027: 12000000.0, 2028: 5000000.0, 2029: 6000000.0, 2030: 6000000.0})
-    cap_26 = st.number_input("Capex FY2026", value=float(capex_dict.get(2026, 0)), step=100000.0, help="Estimated Capital Expenditures for Fiscal Year 2026.")
-    cap_27 = st.number_input("Capex FY2027", value=float(capex_dict.get(2027, 0)), step=100000.0, help="Estimated Capital Expenditures for Fiscal Year 2027.")
-    cap_28 = st.number_input("Capex FY2028", value=float(capex_dict.get(2028, 0)), step=100000.0, help="Estimated Capital Expenditures for Fiscal Year 2028.")
-    cap_29 = st.number_input("Capex FY2029", value=float(capex_dict.get(2029, 0)), step=100000.0, help="Estimated Capital Expenditures for Fiscal Year 2029.")
-    cap_30 = st.number_input("Capex FY2030", value=float(capex_dict.get(2030, 0)), step=100000.0, help="Estimated Capital Expenditures for Fiscal Year 2030.")
+    capex_dict = params.get("Capex Schedule", {2026: 14000000, 2027: 12000000, 2028: 5000000, 2029: 6000000, 2030: 6000000})
+    cap_26 = st.number_input("Capex FY2026", value=int(capex_dict.get(2026, 0)), step=100000, help="Estimated Capital Expenditures for Fiscal Year 2026.")
+    cap_27 = st.number_input("Capex FY2027", value=int(capex_dict.get(2027, 0)), step=100000, help="Estimated Capital Expenditures for Fiscal Year 2027.")
+    cap_28 = st.number_input("Capex FY2028", value=int(capex_dict.get(2028, 0)), step=100000, help="Estimated Capital Expenditures for Fiscal Year 2028.")
+    cap_29 = st.number_input("Capex FY2029", value=int(capex_dict.get(2029, 0)), step=100000, help="Estimated Capital Expenditures for Fiscal Year 2029.")
+    cap_30 = st.number_input("Capex FY2030", value=int(capex_dict.get(2030, 0)), step=100000, help="Estimated Capital Expenditures for Fiscal Year 2030.")
     
     st.markdown("**Maintenance (PM) Schedule**")
-    pm_cost_total = st.number_input("PM Total Cost", value=float(params["PM Cost Over Lease"]), step=100000.0, help="Total Property Management / Preventive Maintenance budget over the lease term.")
-    pm_dict = params.get("PM Schedule", {2026: 1500000.0, 2027: 200000.0, 2028: 200000.0, 2029: 200000.0, 2030: 200000.0, 2031: 200000.0})
-    pm_26 = st.number_input("PM FY2026", value=float(pm_dict.get(2026, 0)), step=50000.0, help="Preventive Maintenance budget allocation for Fiscal Year 2026.")
-    pm_27 = st.number_input("PM FY2027", value=float(pm_dict.get(2027, 0)), step=10000.0, help="Preventive Maintenance budget allocation for Fiscal Year 2027.")
-    pm_28 = st.number_input("PM FY2028", value=float(pm_dict.get(2028, 0)), step=10000.0, help="Preventive Maintenance budget allocation for Fiscal Year 2028.")
-    pm_29 = st.number_input("PM FY2029", value=float(pm_dict.get(2029, 0)), step=10000.0, help="Preventive Maintenance budget allocation for Fiscal Year 2029.")
-    pm_30 = st.number_input("PM FY2030", value=float(pm_dict.get(2030, 0)), step=10000.0, help="Preventive Maintenance budget allocation for Fiscal Year 2030.")
+    pm_cost_total = st.number_input("PM Total Cost", value=int(params["PM Cost Over Lease"]), step=100000, help="Total Property Management / Preventive Maintenance budget over the lease term.")
+    pm_dict = params.get("PM Schedule", {2026: 1500000, 2027: 200000, 2028: 200000, 2029: 200000, 2030: 200000, 2031: 200000})
+    pm_26 = st.number_input("PM FY2026", value=int(pm_dict.get(2026, 0)), step=50000, help="Preventive Maintenance budget allocation for Fiscal Year 2026.")
+    pm_27 = st.number_input("PM FY2027", value=int(pm_dict.get(2027, 0)), step=10000, help="Preventive Maintenance budget allocation for Fiscal Year 2027.")
+    pm_28 = st.number_input("PM FY2028", value=int(pm_dict.get(2028, 0)), step=10000, help="Preventive Maintenance budget allocation for Fiscal Year 2028.")
+    pm_29 = st.number_input("PM FY2029", value=int(pm_dict.get(2029, 0)), step=10000, help="Preventive Maintenance budget allocation for Fiscal Year 2029.")
+    pm_30 = st.number_input("PM FY2030", value=int(pm_dict.get(2030, 0)), step=10000, help="Preventive Maintenance budget allocation for Fiscal Year 2030.")
     pm_31 = st.number_input("PM FY2031", value=float(pm_dict.get(2031, 0)), step=10000.0, help="Preventive Maintenance budget allocation for Fiscal Year 2031.")
 
 # Expander 3: Financial Rates & ARO Workings
