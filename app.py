@@ -274,7 +274,7 @@ with st.sidebar.expander("▶ CAPEX & PM Schedule"):
     fitout_3 = st.number_input("Fitout Phase 3 Cost", value=int(fitout_breakdown[2]), step=100000, help="Capital expenditure for phase 3 of fitout works.")
     
     fitout_total = fitout_1 + fitout_2 + fitout_3
-    st.info(f"Total Fitout Cost: {params['Currency']} {fitout_total:,.2f}")
+    st.info(f"Total Fitout Cost: {params['Currency']} {fitout_total:,}")
     
     st.markdown("**Capex Investments by Year**")
     capex_dict = params.get("Capex Schedule", {2026: 14000000, 2027: 12000000, 2028: 5000000, 2029: 6000000, 2030: 6000000})

@@ -27,7 +27,7 @@ section[data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] {
     background-color: #0f172a !important;
     border: 2px dashed #3b82f6 !important;
     border-radius: 12px !important;
-    color: #e2e8f0 !important;
+    color: #cbd5e1 !important;
     padding: 16px !important;
     transition: all 0.3s ease !important;
 }
@@ -35,6 +35,12 @@ section[data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] {
 section[data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"]:hover {
     border-color: #60a5fa !important;
     background-color: #1e293b !important;
+}
+
+/* Ensure limit and details texts inside uploader are highly visible */
+section[data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] small,
+section[data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] span {
+    color: #94a3b8 !important;
 }
 
 /* File Upload Button inside Dropzone */
@@ -46,6 +52,10 @@ section[data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] button {
     font-size: 0.85rem !important;
     padding: 6px 14px !important;
     box-shadow: none !important;
+}
+
+section[data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] button * {
+    color: #ffffff !important;
 }
 
 section[data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] button:hover {
@@ -158,6 +168,8 @@ section[data-testid="stSidebar"] .stTooltipIcon svg {
     fill: #cfdb8d !important;
     stroke: #cfdb8d !important;
     color: #cfdb8d !important;
+    width: 10px !important;
+    height: 10px !important;
     transition: transform 0.2s ease-in-out, filter 0.2s ease !important;
     filter: drop-shadow(0 0 2px rgba(56, 189, 248, 0.4)) !important;
 }
@@ -166,7 +178,7 @@ section[data-testid="stSidebar"] [data-testid="stTooltipHoverTarget"]:hover svg,
 section[data-testid="stSidebar"] [data-testid="stHelpIcon"]:hover svg,
 section[data-testid="stSidebar"] svg[class*="stTooltipIcon"]:hover,
 section[data-testid="stSidebar"] .stTooltipIcon:hover svg {
-    transform: scale(1.25) !important;
+    transform: scale(1.15) !important;
     fill: #cfdb8d !important;
     stroke: #cfdb8d !important;
     color: #cfdb8d !important;
