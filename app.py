@@ -176,7 +176,23 @@ else:
 
 # 2. Sidebar Ingestion Panel
 st.sidebar.markdown('<p style="font-size: 1.3rem; font-weight:700; color:#f8fafc; margin-bottom: 15px;">📁 Data Ingestion</p>', unsafe_allow_html=True)
-uploaded_file = st.sidebar.file_uploader("Upload Lease Parameter Workbook (.xlsx)", type=["xlsx"])
+uploaded_file = st.sidebar.file_uploader("Upload Lease Parameter Workbook (.xlsx)", type=["xlsx"], help="Upload an Excel sheet (.xlsx) containing main lease configuration parameters.")
+
+input_template_path = r"C:\Users\z004df5r\Documents\rental-automation\artifacts\input_template.xlsx"
+if os.path.exists(input_template_path):
+    try:
+        with open(input_template_path, "rb") as f:
+            template_bytes = f.read()
+        st.sidebar.download_button(
+            label="📥 Download Input Template",
+            data=template_bytes,
+            file_name="input_template.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            use_container_width=True,
+            help="Download the blank template sheet to fill in lease parameters."
+        )
+    except Exception as e:
+        st.sidebar.error(f"Error loading template: {e}")
 
 # Default fallback values matching Specimen
 default_params = {
@@ -228,64 +244,64 @@ st.sidebar.markdown('<p style="font-size: 1.25rem; font-weight:600; color:#cbd5e
 
 # Expander 1: Real Estate & Lease Properties
 with st.sidebar.expander("▶ Real Estate & Lease Properties", expanded=True):
-    reu_name = st.text_input("REU Name", value=params["REU Name"])
-    bldg_name = st.text_input("Building Name", value=params["Building Name"])
-    city = st.text_input("City", value=params["City"])
-    area = st.number_input("Chargeable Area (Sq.ft.)", value=int(params["Chargeable Area Sqft"]), step=100)
+    reu_name = st.text_input("REU Name", value=params["REU Name"], help="Unique identifier code for the Real Estate Unit.")
+    bldg_name = st.text_input("Building Name", value=params["Building Name"], help="The name of the building/facility where the premises are leased.")
+    city = st.text_input("City", value=params["City"], help="The city location of the leased property.")
+    area = st.number_input("Chargeable Area (Sq.ft.)", value=int(params["Chargeable Area Sqft"]), step=100, help="The chargeable/rentable area in square feet.")
     
     col_d1, col_d2 = st.columns(2)
     with col_d1:
-        start_date = st.date_input("Start Date", value=params["Agreement Start Date"])
+        start_date = st.date_input("Start Date", value=params["Agreement Start Date"], help="The official lease agreement commencement date.")
     with col_d2:
-        end_date = st.date_input("End Date", value=params["Agreement End Date"])
+        end_date = st.date_input("End Date", value=params["Agreement End Date"], help="The official lease agreement expiration date.")
         
-    rent_sqft = st.number_input("Quoted Rentals (per Sqft/mo)", value=float(params["Rent Per Sqft"]), step=1.0)
-    cam_sqft = st.number_input("Quoted CAM (per Sqft/mo)", value=float(params["Quoted CAM"]), step=0.1)
+    rent_sqft = st.number_input("Quoted Rentals (per Sqft/mo)", value=float(params["Rent Per Sqft"]), step=1.0, help="The starting rental rate per square foot per month.")
+    cam_sqft = st.number_input("Quoted CAM (per Sqft/mo)", value=float(params["Quoted CAM"]), step=0.1, help="The starting Common Area Maintenance (CAM) rate per square foot per month.")
     
-    rent_esc = st.slider("Rent Escalation %", min_value=0.0, max_value=0.5, value=float(params["Escalation %"]), step=0.01)
-    rent_esc_freq = st.number_input("Rent Escalation Freq (Months)", value=int(params["Escalation Frequency Months"]), step=12)
-    cam_esc = st.slider("CAM Escalation %", min_value=0.0, max_value=0.2, value=float(params["CAM Escalation %"]), step=0.01)
+    rent_esc = st.slider("Rent Escalation %", min_value=0.0, max_value=0.5, value=float(params["Escalation %"]), step=0.01, help="The rental rate escalation percentage (e.g. 0.15 = 15%).")
+    rent_esc_freq = st.number_input("Rent Escalation Freq (Months)", value=int(params["Escalation Frequency Months"]), step=12, help="Interval in months between rent escalations (typically 36 months).")
+    cam_esc = st.slider("CAM Escalation %", min_value=0.0, max_value=0.2, value=float(params["CAM Escalation %"]), step=0.01, help="Annual escalation percentage applied to CAM rates.")
     
-    sec_deposit = st.number_input("Security Deposit Amount", value=float(params["Security Deposit Amount"]), step=50000.0)
-    energy_dep = st.number_input("Energy Deposit Amount", value=float(params["Addnl.Deposit -energy(Refundable)"]), step=10000.0)
+    sec_deposit = st.number_input("Security Deposit Amount", value=float(params["Security Deposit Amount"]), step=50000.0, help="Interest-free refundable security deposit amount.")
+    energy_dep = st.number_input("Energy Deposit Amount", value=float(params["Addnl.Deposit -energy(Refundable)"]), step=10000.0, help="Additional refundable security deposit specifically for power/utilities.")
 
 # Expander 2: CAPEX & PM Investment Schedule
 with st.sidebar.expander("▶ CAPEX & PM Schedule"):
     st.markdown("**Fitout Investments (Breakdown)**")
     fitout_breakdown = params.get("Fitout Cost Breakdown", [14000000.0, 5000000.0, 15000000.0])
-    fitout_1 = st.number_input("Fitout Phase 1 Cost", value=float(fitout_breakdown[0]), step=100000.0)
-    fitout_2 = st.number_input("Fitout Phase 2 Cost", value=float(fitout_breakdown[1]), step=100000.0)
-    fitout_3 = st.number_input("Fitout Phase 3 Cost", value=float(fitout_breakdown[2]), step=100000.0)
+    fitout_1 = st.number_input("Fitout Phase 1 Cost", value=float(fitout_breakdown[0]), step=100000.0, help="Capital expenditure for phase 1 of fitout works.")
+    fitout_2 = st.number_input("Fitout Phase 2 Cost", value=float(fitout_breakdown[1]), step=100000.0, help="Capital expenditure for phase 2 of fitout works.")
+    fitout_3 = st.number_input("Fitout Phase 3 Cost", value=float(fitout_breakdown[2]), step=100000.0, help="Capital expenditure for phase 3 of fitout works.")
     
     fitout_total = fitout_1 + fitout_2 + fitout_3
     st.info(f"Total Fitout Cost: {params['Currency']} {fitout_total:,.2f}")
     
     st.markdown("**Capex Investments by Year**")
     capex_dict = params.get("Capex Schedule", {2026: 14000000.0, 2027: 12000000.0, 2028: 5000000.0, 2029: 6000000.0, 2030: 6000000.0})
-    cap_26 = st.number_input("Capex FY2026", value=float(capex_dict.get(2026, 0)), step=100000.0)
-    cap_27 = st.number_input("Capex FY2027", value=float(capex_dict.get(2027, 0)), step=100000.0)
-    cap_28 = st.number_input("Capex FY2028", value=float(capex_dict.get(2028, 0)), step=100000.0)
-    cap_29 = st.number_input("Capex FY2029", value=float(capex_dict.get(2029, 0)), step=100000.0)
-    cap_30 = st.number_input("Capex FY2030", value=float(capex_dict.get(2030, 0)), step=100000.0)
+    cap_26 = st.number_input("Capex FY2026", value=float(capex_dict.get(2026, 0)), step=100000.0, help="Estimated Capital Expenditures for Fiscal Year 2026.")
+    cap_27 = st.number_input("Capex FY2027", value=float(capex_dict.get(2027, 0)), step=100000.0, help="Estimated Capital Expenditures for Fiscal Year 2027.")
+    cap_28 = st.number_input("Capex FY2028", value=float(capex_dict.get(2028, 0)), step=100000.0, help="Estimated Capital Expenditures for Fiscal Year 2028.")
+    cap_29 = st.number_input("Capex FY2029", value=float(capex_dict.get(2029, 0)), step=100000.0, help="Estimated Capital Expenditures for Fiscal Year 2029.")
+    cap_30 = st.number_input("Capex FY2030", value=float(capex_dict.get(2030, 0)), step=100000.0, help="Estimated Capital Expenditures for Fiscal Year 2030.")
     
     st.markdown("**Maintenance (PM) Schedule**")
-    pm_cost_total = st.number_input("PM Total Cost", value=float(params["PM Cost Over Lease"]), step=100000.0)
+    pm_cost_total = st.number_input("PM Total Cost", value=float(params["PM Cost Over Lease"]), step=100000.0, help="Total Property Management / Preventive Maintenance budget over the lease term.")
     pm_dict = params.get("PM Schedule", {2026: 1500000.0, 2027: 200000.0, 2028: 200000.0, 2029: 200000.0, 2030: 200000.0, 2031: 200000.0})
-    pm_26 = st.number_input("PM FY2026", value=float(pm_dict.get(2026, 0)), step=50000.0)
-    pm_27 = st.number_input("PM FY2027", value=float(pm_dict.get(2027, 0)), step=10000.0)
-    pm_28 = st.number_input("PM FY2028", value=float(pm_dict.get(2028, 0)), step=10000.0)
-    pm_29 = st.number_input("PM FY2029", value=float(pm_dict.get(2029, 0)), step=10000.0)
-    pm_30 = st.number_input("PM FY2030", value=float(pm_dict.get(2030, 0)), step=10000.0)
-    pm_31 = st.number_input("PM FY2031", value=float(pm_dict.get(2031, 0)), step=10000.0)
+    pm_26 = st.number_input("PM FY2026", value=float(pm_dict.get(2026, 0)), step=50000.0, help="Preventive Maintenance budget allocation for Fiscal Year 2026.")
+    pm_27 = st.number_input("PM FY2027", value=float(pm_dict.get(2027, 0)), step=10000.0, help="Preventive Maintenance budget allocation for Fiscal Year 2027.")
+    pm_28 = st.number_input("PM FY2028", value=float(pm_dict.get(2028, 0)), step=10000.0, help="Preventive Maintenance budget allocation for Fiscal Year 2028.")
+    pm_29 = st.number_input("PM FY2029", value=float(pm_dict.get(2029, 0)), step=10000.0, help="Preventive Maintenance budget allocation for Fiscal Year 2029.")
+    pm_30 = st.number_input("PM FY2030", value=float(pm_dict.get(2030, 0)), step=10000.0, help="Preventive Maintenance budget allocation for Fiscal Year 2030.")
+    pm_31 = st.number_input("PM FY2031", value=float(pm_dict.get(2031, 0)), step=10000.0, help="Preventive Maintenance budget allocation for Fiscal Year 2031.")
 
 # Expander 3: Financial Rates & ARO Workings
 with st.sidebar.expander("▶ Rates & ARO Restoration"):
-    wacc = st.slider("Cost of Capital (WACC) %", min_value=0.0, max_value=0.25, value=float(params["Cost of Capital"]), step=0.005)
-    borrow_rate = st.slider("Incremental Borrowing Rate %", min_value=0.0, max_value=0.25, value=float(params["Incremental Borrowing Rate"]), step=0.005)
-    imputed_rate = st.slider("Imputed Interest Rate %", min_value=0.0, max_value=0.20, value=float(params["Imputed Interest Rate"]), step=0.001)
-    reckoner_rate = st.number_input("Ready Reckoner Rate (INR/sqm)", value=float(params["Ready Reckoner Rate"]), step=1000.0)
-    aro_rate = st.number_input("Restoration Cost per Sqft (ARO)", value=float(params["Incremental Restoration Cost Sqft"]), step=5.0)
-    exchange_rate = st.number_input("Forex Rate (INR/Euro)", value=float(params["Exchange Rate"]), step=0.1)
+    wacc = st.slider("Cost of Capital (WACC) %", min_value=0.0, max_value=0.25, value=float(params["Cost of Capital"]), step=0.005, help="Weighted Average Cost of Capital used for investment analysis and discounting cash flows.")
+    borrow_rate = st.slider("Incremental Borrowing Rate %", min_value=0.0, max_value=0.25, value=float(params["Incremental Borrowing Rate"]), step=0.005, help="Incremental Borrowing Rate (IBR) used to calculate the lease liability.")
+    imputed_rate = st.slider("Imputed Interest Rate %", min_value=0.0, max_value=0.20, value=float(params["Imputed Interest Rate"]), step=0.001, help="The implicit rate of interest in the lease, or estimated discount rate.")
+    reckoner_rate = st.number_input("Ready Reckoner Rate (INR/sqm)", value=float(params["Ready Reckoner Rate"]), step=1000.0, help="Government-determined Ready Reckoner Rate used for stamp duty / valuation.")
+    aro_rate = st.number_input("Restoration Cost per Sqft (ARO)", value=float(params["Incremental Restoration Cost Sqft"]), step=5.0, help="Estimated asset restoration cost per square foot at lease end (Asset Retirement Obligation).")
+    exchange_rate = st.number_input("Forex Rate (INR/Euro)", value=float(params["Exchange Rate"]), step=0.1, help="The foreign currency exchange rate (INR per 1 Euro) for reporting.")
 
 # Pack overrides into active UI parameters
 ui_params = {
@@ -391,7 +407,7 @@ st.markdown(metrics_html, unsafe_allow_html=True)
 
 
 # --- EXCEL WORKBOOK COMPILER GENERATION ---
-template_file_path = r"C:\Users\z0050s8t\Documents\rental-automation\artifacts\Rental Specimen.xlsx"
+template_file_path = r"C:\Users\z004df5r\Documents\rental-automation\artifacts\Rental Specimen.xlsx"
 
 if os.path.exists(template_file_path):
     try:
