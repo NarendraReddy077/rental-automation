@@ -449,6 +449,9 @@ else:
 total_rent_cam = ui_params["Rent Per Sqft"] + ui_params["Quoted CAM"]
 duration_yrs = ui_params["Lease Term Months"] / 12.0
 total_sd_amount = ui_params["Security Deposit Amount"] + ui_params["Addnl.Deposit -energy(Refundable)"]
+total_fitout = ui_params["Fitout Cost"]
+total_capex = sum(ui_params["Capex Schedule"].values())
+total_pm = ui_params["PM Cost Over Lease"]
 
 metrics_html = f"""
 <div class="stats-grid">
@@ -471,6 +474,21 @@ metrics_html = f"""
         <span class="stat-label">Lease Duration</span>
         <span class="stat-value">{duration_yrs:.2f} yrs</span>
         <span class="stat-meta">{ui_params['Agreement Start Date'].strftime('%b %d, %Y')} to {ui_params['Agreement End Date'].strftime('%b %d, %Y')}</span>
+    </div>
+    <div class="stat-cell">
+        <span class="stat-label">Total Fitout Cost</span>
+        <span class="stat-value">{ui_params['Currency']} {total_fitout/1000000:,.2f} M</span>
+        <span class="stat-meta">{len(ui_params['Fitout Cost Breakdown'])} Phases Configured</span>
+    </div>
+    <div class="stat-cell">
+        <span class="stat-label">Total CAPEX</span>
+        <span class="stat-value">{ui_params['Currency']} {total_capex/1000000:,.2f} M</span>
+        <span class="stat-meta">{len(ui_params['Capex Schedule'])} Years Scheduled</span>
+    </div>
+    <div class="stat-cell">
+        <span class="stat-label">Total PM Cost</span>
+        <span class="stat-value">{ui_params['Currency']} {total_pm/1000000:,.2f} M</span>
+        <span class="stat-meta">{len(ui_params['PM Schedule'])} Years Scheduled</span>
     </div>
 </div>
 """

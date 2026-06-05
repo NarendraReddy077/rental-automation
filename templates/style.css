@@ -353,6 +353,22 @@ section[data-testid="stSidebar"] .stTooltipIcon:hover svg {
     /* Purple accent */
 }
 
+.stat-cell:nth-child(5)::before {
+    background-color: #f59e0b;
+    /* Amber accent */
+}
+
+.stat-cell:nth-child(6)::before {
+    background-color: #ea580c;
+    /* Orange accent */
+}
+
+.stat-cell:nth-child(7)::before {
+    background-color: #be123c;
+    /* Rose accent */
+}
+
+
 .stat-label {
     font-size: 0.8rem;
     font-weight: 600;
