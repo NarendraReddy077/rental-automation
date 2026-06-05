@@ -37,6 +37,29 @@ style_css = load_template("style.css")
 if style_css:
     st.markdown(f"<style>{style_css}</style>", unsafe_allow_html=True)
 
+# Inject background image
+import base64
+bg_path = os.path.join(os.path.dirname(__file__), "bg.png")
+if os.path.exists(bg_path):
+    try:
+        with open(bg_path, "rb") as f:
+            bg_data = f.read()
+        bg_base64 = base64.b64encode(bg_data).decode()
+        bg_css = f"""
+        <style>
+        .stApp {{
+            background-image: url("data:image/png;base64,{bg_base64}");
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+        }}
+        </style>
+        """
+        st.markdown(bg_css, unsafe_allow_html=True)
+    except Exception:
+        pass
+
 
 
 
@@ -131,7 +154,7 @@ else:
 st.sidebar.markdown('<p style="font-size: 1.3rem; font-weight:700; color:#f8fafc; margin-bottom: 15px;">📁 Data Ingestion</p>', unsafe_allow_html=True)
 uploaded_file = st.sidebar.file_uploader("Upload Lease Parameter Workbook (.xlsx)", type=["xlsx"], help="Upload an Excel sheet (.xlsx) containing main lease configuration parameters.")
 
-input_template_path = r"C:\Users\z004df5r\Documents\rental-automation\artifacts\input_template.xlsx"
+input_template_path = os.path.join(os.path.dirname(__file__), "artifacts", "input_template.xlsx")
 if os.path.exists(input_template_path):
     try:
         with open(input_template_path, "rb") as f:
@@ -496,7 +519,7 @@ st.markdown(metrics_html, unsafe_allow_html=True)
 
 
 # --- EXCEL WORKBOOK COMPILER GENERATION ---
-template_file_path = r"C:\Users\z004df5r\Documents\rental-automation\artifacts\Rental Specimen.xlsx"
+template_file_path = os.path.join(os.path.dirname(__file__), "artifacts", "Rental Specimen.xlsx")
 
 if os.path.exists(template_file_path):
     try:
