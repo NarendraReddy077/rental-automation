@@ -43,7 +43,12 @@ def simulate(params, capex_pm_df=None):
         rent_factor = (1.0 + esc_pct) ** escalations
             
         # CAM escalation
-        cam_factor = (1.0 + params.get("CAM Escalation %", 0.05)) ** (yr - 1)
+        cam_esc_freq_years = params.get("CAM Escalation Frequency Months", 12) // 12
+        if cam_esc_freq_years <= 0:
+            cam_esc_freq_years = 1
+        cam_esc_pct = params.get("CAM Escalation %", 0.05)
+        cam_escalations = (yr - 1) // cam_esc_freq_years
+        cam_factor = (1.0 + cam_esc_pct) ** cam_escalations
         
         yearly_rent = rent_rate * rent_factor * area_sqft * active_months
         yearly_cam = cam_rate * cam_factor * area_sqft * active_months

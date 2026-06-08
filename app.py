@@ -190,6 +190,7 @@ default_params = {
     "Escalation %": 0.15,
     "Escalation Frequency Months": 36,
     "CAM Escalation %": 0.05,
+    "CAM Escalation Frequency Months": 12,
     "Security Deposit Amount": 11418000,
     "Addnl.Deposit -energy(Refundable)": 500000,
     "Fitout Cost": 34000000,
@@ -264,7 +265,8 @@ with st.sidebar.expander("▶ Real Estate & Lease Properties", expanded=True):
     
     rent_esc = st.slider("Rent Escalation %", min_value=0.0, max_value=0.5, value=float(params["Escalation %"]), key=f"rent_esc{key_suffix}", step=0.01, help="The rental rate escalation percentage (e.g. 0.15 = 15%).")
     rent_esc_freq = st.number_input("Rent Escalation Freq (Months)", value=int(params["Escalation Frequency Months"]), key=f"rent_esc_freq{key_suffix}", step=12, help="Interval in months between rent escalations (typically 36 months).")
-    cam_esc = st.slider("CAM Escalation %", min_value=0.0, max_value=0.2, value=float(params["CAM Escalation %"]), key=f"cam_esc{key_suffix}", step=0.01, help="Annual escalation percentage applied to CAM rates.")
+    cam_esc = st.slider("CAM Escalation %", min_value=0.0, max_value=0.2, value=float(params["CAM Escalation %"]), key=f"cam_esc{key_suffix}", step=0.01, help="Escalation percentage applied to CAM rates.")
+    cam_esc_freq = st.number_input("CAM Escalation Freq (Months)", value=int(params.get("CAM Escalation Frequency Months", 12)), key=f"cam_esc_freq{key_suffix}", step=12, help="Interval in months between CAM rate escalations (typically 12 months).")
     
     sec_deposit = st.number_input("Security Deposit Amount (INR)", value=int(params["Security Deposit Amount"]), key=f"sec_deposit{key_suffix}", step=50000, help="Interest-free refundable security deposit amount.")
     energy_dep = st.number_input("Energy Deposit Amount (INR)", value=int(params["Addnl.Deposit -energy(Refundable)"]), key=f"energy_dep{key_suffix}", step=10000, help="Additional refundable security deposit specifically for power/utilities.")
@@ -414,6 +416,7 @@ ui_params = {
     "Escalation %": float(rent_esc),
     "Escalation Frequency Months": int(rent_esc_freq),
     "CAM Escalation %": float(cam_esc),
+    "CAM Escalation Frequency Months": int(cam_esc_freq),
     "Security Deposit Amount": float(sec_deposit),
     "Addnl.Deposit -energy(Refundable)": float(energy_dep),
     

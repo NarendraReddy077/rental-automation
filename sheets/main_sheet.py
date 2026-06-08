@@ -27,7 +27,15 @@ def inject(ws, params):
     # Text clauses
     rent_esc_years = params["Escalation Frequency Months"] // 12
     ws["B14"] = f"{int(params['Escalation %'] * 100)}% every {rent_esc_years} years"
-    ws["B15"] = f"{int(params['CAM Escalation %'] * 100)}% every year"
+    cam_esc_freq = params.get("CAM Escalation Frequency Months", 12)
+    if cam_esc_freq % 12 == 0:
+        cam_esc_years = cam_esc_freq // 12
+        if cam_esc_years == 1:
+            ws["B15"] = f"{int(params['CAM Escalation %'] * 100)}% every year"
+        else:
+            ws["B15"] = f"{int(params['CAM Escalation %'] * 100)}% every {cam_esc_years} years"
+    else:
+        ws["B15"] = f"{int(params['CAM Escalation %'] * 100)}% every {cam_esc_freq} months"
     
     ws["B17"] = params["Addnl.Deposit -energy(Refundable)"]
     ws["B18"] = params["Incremental Restoration Cost Sqft"]
@@ -55,7 +63,11 @@ def simulate(params):
         "PM Cost Over Lease Period": f"{params['Currency']} {params['PM Cost Over Lease']:,.2f}",
         "Imputed Interest Rate": f"{params['Imputed Interest Rate']*100:.2f}%",
         "Rent Escalation Clause": f"{int(params['Escalation %']*100)}% every {params['Escalation Frequency Months']//12} years",
-        "CAM Escalation Clause": f"{int(params['CAM Escalation %']*100)}% every year",
+        "CAM Escalation Clause": (
+            f"{int(params['CAM Escalation %']*100)}% every year" if params.get("CAM Escalation Frequency Months", 12) == 12 else
+            (f"{int(params['CAM Escalation %']*100)}% every {params.get('CAM Escalation Frequency Months', 12)//12} years" if params.get("CAM Escalation Frequency Months", 12) % 12 == 0 else
+             f"{int(params['CAM Escalation %']*100)}% every {params.get('CAM Escalation Frequency Months', 12)} months")
+        ),
         "Energy Deposit": f"{params['Currency']} {params['Addnl.Deposit -energy(Refundable)']:,.2f}",
         "Incremental Restoration Cost / sqft": f"{params['Currency']} {params['Incremental Restoration Cost Sqft']:.2f}"
     }

@@ -120,7 +120,22 @@ def parse_input_xlsx(file_bytes):
             freq_val = 36
         params["Escalation Frequency Months"] = freq_val
         
-        params["CAM Escalation %"] = 0.05
+        cam_esc_val = raw_params.get("CAM Escalation %", 0.05)
+        params["CAM Escalation %"] = float(cam_esc_val) if cam_esc_val is not None and not pd.isna(cam_esc_val) else 0.05
+        
+        cam_freq_val = raw_params.get("CAM Escalation Frequency Months", 12)
+        if cam_freq_val is not None and not pd.isna(cam_freq_val):
+            try:
+                cam_freq_val = float(cam_freq_val)
+                if cam_freq_val < 1.0:
+                    cam_freq_val = int(round(cam_freq_val * 100))
+                else:
+                    cam_freq_val = int(cam_freq_val)
+            except Exception:
+                cam_freq_val = 12
+        else:
+            cam_freq_val = 12
+        params["CAM Escalation Frequency Months"] = cam_freq_val
         params["Billing Frequency"] = get_str("Billing Frequency", "Monthly")
         params["Security Deposit Months"] = get_float("Security Deposit Months", 6.0)
         params["Security Deposit Amount"] = get_float("Security Deposit Amount", 11418000.0)
