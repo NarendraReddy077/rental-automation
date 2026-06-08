@@ -60,7 +60,7 @@ def inject(ws, params):
     fitout_active_months = params.get("Fitout Active Months Breakdown", [])
     
     N = len(fitouts)
-    offset = 6 * (N - 3)
+    offset = 6 * (N - 3) if N > 3 else 0
     
     # Insert new rows above row 20 if N > 3
     if N > 3:
@@ -99,6 +99,28 @@ def inject(ws, params):
             ws.cell(row=r_c, column=c, value=f"=IF({col_char}{r_m}<>0,$B${r_c}/$B${r_d},0)")
             # Write used Depreciation formula
             ws.cell(row=r_d, column=c, value=f"={col_char}{r_c}/12*{col_char}{r_m}")
+
+    # If N < 3, clear the labels and values of the unused template phases (from N to 3)
+    if N < 3:
+        for k in range(N, 3):
+            r_m = 3 + 6 * k
+            r_c = 6 + 6 * k
+            r_d = 7 + 6 * k
+            ws.cell(row=r_m, column=1, value="")
+            ws.cell(row=r_m, column=4, value="")
+            ws.cell(row=r_m, column=5, value="")
+            ws.cell(row=r_m+1, column=4, value="")
+            ws.cell(row=r_m+1, column=5, value="")
+            ws.cell(row=r_c, column=1, value="")
+            ws.cell(row=r_c, column=2, value=0.0)
+            ws.cell(row=r_c, column=4, value="")
+            ws.cell(row=r_d, column=1, value="")
+            ws.cell(row=r_d, column=2, value="")
+            ws.cell(row=r_d, column=4, value="")
+            for c in range(6, 16):
+                ws.cell(row=r_m, column=c, value=0)
+                ws.cell(row=r_c, column=c, value=0)
+                ws.cell(row=r_d, column=c, value=0)
 
     # Total Fitout Cost cell B3
     ws["B3"] = "=" + "+".join([f"B{6 + 6 * k}" for k in range(N)])

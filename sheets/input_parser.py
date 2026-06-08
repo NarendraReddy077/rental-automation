@@ -20,14 +20,29 @@ def parse_input_xlsx(file_bytes):
             raw_data = file_bytes
             
         df = pd.read_excel(io.BytesIO(raw_data), sheet_name="Main")
-        df.columns = [c.strip() for c in df.columns]
+        df.columns = [str(c).strip() for c in df.columns]
         
+        # Dynamically determine Field Name and Sample Value columns
+        field_col = None
+        value_col = None
+        for col in df.columns:
+            col_lower = col.lower()
+            if "field" in col_lower or "parameter" in col_lower or "name" in col_lower:
+                field_col = col
+            elif "value" in col_lower or "sample" in col_lower:
+                value_col = col
+        
+        if field_col is None:
+            field_col = df.columns[0] if len(df.columns) > 0 else "Field Name"
+        if value_col is None:
+            value_col = df.columns[1] if len(df.columns) > 1 else "Sample Value"
+
         # Build dictionary from Name-Value pairs
         raw_params = {}
-        for idx, row in df.iterrows():
-            if 'Field Name' in df.columns and 'Sample Value' in df.columns:
-                name = str(row['Field Name']).strip()
-                val = row['Sample Value']
+        if field_col in df.columns and value_col in df.columns:
+            for idx, row in df.iterrows():
+                name = str(row[field_col]).strip()
+                val = row[value_col]
                 if pd.isna(val):
                     val = None
                 raw_params[name] = val
@@ -43,15 +58,24 @@ def parse_input_xlsx(file_bytes):
             except Exception:
                 return default
 
-        # Safely extract values from raw_params with fallbacks
-        def get_str(name, default):
-            v = raw_params.get(name)
+        # Helper to check key and all aliases (case-insensitive and stripped)
+        def get_value_by_aliases(aliases, default=None):
+            for alias in aliases:
+                alias_clean = alias.lower().strip()
+                for key, val in raw_params.items():
+                    if key.lower().strip() == alias_clean:
+                        return val
+            return default
+
+        # Safely extract values from raw_params with fallbacks and aliases
+        def get_str(name, aliases, default):
+            v = get_value_by_aliases([name] + aliases)
             if v is None or pd.isna(v) or str(v).strip() == "":
                 return default
             return str(v).strip()
 
-        def get_float(name, default):
-            v = raw_params.get(name)
+        def get_float(name, aliases, default):
+            v = get_value_by_aliases([name] + aliases)
             if v is None or pd.isna(v):
                 return default
             try:
@@ -59,8 +83,8 @@ def parse_input_xlsx(file_bytes):
             except Exception:
                 return default
 
-        def get_int(name, default):
-            v = raw_params.get(name)
+        def get_int(name, aliases, default):
+            v = get_value_by_aliases([name] + aliases)
             if v is None or pd.isna(v):
                 return default
             try:
@@ -70,29 +94,35 @@ def parse_input_xlsx(file_bytes):
 
         # Normalize values
         params = {}
-        params["Lease ID"] = get_str("Lease ID", "LEASE-001")
-        params["REU Name"] = get_str("REU Name", "IN-CHEK2")
-        params["Lease Type"] = get_str("Lease Type", "Office")
-        params["Building Name"] = get_str("Building Name", "SKCL Tech Park")
-        params["City"] = get_str("City", "Chennai")
-        params["Country"] = get_str("Country", "India")
-        params["Currency"] = get_str("Currency", "INR")
+        params["Lease ID"] = get_str("Lease ID", ["LeaseID", "Lease_ID"], "LEASE-001")
+        params["REU Name"] = get_str("REU Name", ["REUName", "REU_Name"], "IN-CHEK2")
+        params["Lease Type"] = get_str("Lease Type", ["LeaseType", "Lease_Type"], "Office")
+        params["Building Name"] = get_str("Building Name", ["BuildingName", "Building_Name"], "SKCL Tech Park")
+        params["City"] = get_str("City", [], "Chennai")
+        params["Country"] = get_str("Country", [], "India")
+        params["Currency"] = get_str("Currency", [], "INR")
         
-        params["Chargeable Area Sqft"] = get_float("Chargeable Area Sqft", 9515.0)
-        params["Parking Slots"] = get_int("Parking Slots", 20)
-        params["4 Wheeler Slots"] = get_int("4 Wheeler Slots", 80)
-        params["4 Wheeler Rate"] = get_float("4 Wheeler Rate", 1500.0)
-        params["2 Wheeler Slots"] = get_int("2 Wheeler Slots", 50)
-        params["2 Wheeler Rate"] = get_float("2 Wheeler Rate", 1000.0)
+        params["Chargeable Area Sqft"] = get_float("Chargeable Area Sqft", ["Chargeable Area Sq.ft.", "Chargeable Area Sq.ft", "Chargeable Area (Sqft)", "Chargeable Area", "Area Sqft", "Area"], 9515.0)
+        params["Parking Slots"] = get_int("Parking Slots", ["ParkingSlots", "Parking Slots Count"], 20)
+        params["4 Wheeler Slots"] = get_int("4 Wheeler Slots", ["No. of 4 wheelers", "4-wheeler slots", "4 Wheeler Parking Slots", "No of 4 wheelers"], 80)
+        params["4 Wheeler Rate"] = get_float("4 Wheeler Rate", ["Rate per 4 wheeler", "4-wheeler rate", "4 Wheeler Parking Rate"], 1500.0)
+        params["2 Wheeler Slots"] = get_int("2 Wheeler Slots", ["No. of 2 wheelers", "2-wheeler slots", "2 Wheeler Parking Slots", "No of 2 wheelers"], 50)
+        params["2 Wheeler Rate"] = get_float("2 Wheeler Rate", ["Rate per 2 wheeler", "2-wheeler rate", "2 Wheeler Parking Rate"], 1000.0)
         
-        start_date = parse_date(raw_params.get("Agreement Start Date"), datetime.date(2026, 4, 1))
-        end_date = parse_date(raw_params.get("Agreement End Date"), datetime.date(2031, 3, 31))
+        start_date_val = get_value_by_aliases(["Agreement Start Date", "Start Date", "Lease Start Date", "Commencement Date"])
+        start_date = parse_date(start_date_val, datetime.date(2026, 4, 1))
+        
+        end_date_val = get_value_by_aliases(["Agreement End Date", "End Date", "Lease End Date", "Expiry Date"])
+        end_date = parse_date(end_date_val, datetime.date(2031, 3, 31))
+        
         params["Agreement Start Date"] = start_date
         params["Agreement End Date"] = end_date
-        params["Rent Start Date"] = parse_date(raw_params.get("Rent Start Date"), start_date)
+        
+        rent_start_date_val = get_value_by_aliases(["Rent Start Date", "Rent Commencement Date"])
+        params["Rent Start Date"] = parse_date(rent_start_date_val, start_date)
         
         # Lease Term calculations
-        term_months = raw_params.get("Lease Term Months")
+        term_months = get_value_by_aliases(["Lease Term Months", "Lease Term", "Term Months", "Duration Months"])
         if term_months is None or pd.isna(term_months):
             # Calculate months from start/end dates
             term_months = round((end_date - start_date).days / 30.4167)
@@ -103,14 +133,14 @@ def parse_input_xlsx(file_bytes):
                 term_months = round((end_date - start_date).days / 30.4167)
         params["Lease Term Months"] = term_months
         
-        params["Rent Per Sqft"] = get_float("Rent Per Sqft", 120.0)
-        params["Quoted CAM"] = get_float("Quoted CAM", 15.48)
+        params["Rent Per Sqft"] = get_float("Rent Per Sqft", ["Rent Per Sq.ft.", "Rent per Sqft", "Rent Per Sqft/month", "Base Rent"], 120.0)
+        params["Quoted CAM"] = get_float("Quoted CAM", ["CAM", "CAM Per Sqft", "Quoted CAM (per sq ft/month)"], 15.48)
         
-        esc_val = raw_params.get("Escalation %", 0.15)
+        esc_val = get_value_by_aliases(["Escalation %", "Rent Escalation %", "Escalation Percentage", "Rent Escalation Pct"])
         params["Escalation %"] = float(esc_val) if esc_val is not None and not pd.isna(esc_val) else 0.15
         
         # Robust check for frequency e.g. 0.36 -> 36 months
-        freq_val = raw_params.get("Escalation Frequency Months", 36)
+        freq_val = get_value_by_aliases(["Escalation Frequency Months", "Rent Escalation Frequency Months", "Rent Escalation Frequency", "Escalation Freq"])
         if freq_val is not None and not pd.isna(freq_val):
             try:
                 freq_val = float(freq_val)
@@ -124,10 +154,10 @@ def parse_input_xlsx(file_bytes):
             freq_val = 36
         params["Escalation Frequency Months"] = freq_val
         
-        cam_esc_val = raw_params.get("CAM Escalation %", 0.05)
+        cam_esc_val = get_value_by_aliases(["CAM Escalation %", "CAM Escalation Percentage", "CAM Escalation Pct", "CAM Escalation", "CAM escalation %"])
         params["CAM Escalation %"] = float(cam_esc_val) if cam_esc_val is not None and not pd.isna(cam_esc_val) else 0.05
         
-        cam_freq_val = raw_params.get("CAM Escalation Frequency Months", 12)
+        cam_freq_val = get_value_by_aliases(["CAM Escalation Frequency Months", "CAM Escalation Frequency", "CAM Escalation Freq", "CAM Escalation Period", "CAM Escalation Period Months", "escalation period", "CAM escalation period", "CAM escalation frequency"])
         if cam_freq_val is not None and not pd.isna(cam_freq_val):
             try:
                 cam_freq_val = float(cam_freq_val)
@@ -142,13 +172,13 @@ def parse_input_xlsx(file_bytes):
         params["CAM Escalation Frequency Months"] = cam_freq_val
         
         # Parking escalation parameters (fallback to Rent Escalation if not specified)
-        park_esc_val = raw_params.get("Parking Escalation %")
+        park_esc_val = get_value_by_aliases(["Parking Escalation %", "Parking Escalation Percentage", "Parking Escalation Pct"])
         if park_esc_val is not None and not pd.isna(park_esc_val):
             params["Parking Escalation %"] = float(park_esc_val)
         else:
             params["Parking Escalation %"] = params["Escalation %"]
             
-        park_freq_val = raw_params.get("Parking Escalation Frequency Months")
+        park_freq_val = get_value_by_aliases(["Parking Escalation Frequency Months", "Parking Escalation Frequency", "Parking Escalation Freq"])
         if park_freq_val is not None and not pd.isna(park_freq_val):
             try:
                 park_freq_val = float(park_freq_val)
@@ -162,28 +192,28 @@ def parse_input_xlsx(file_bytes):
             park_freq_val = params["Escalation Frequency Months"]
         params["Parking Escalation Frequency Months"] = park_freq_val
 
-        params["Billing Frequency"] = get_str("Billing Frequency", "Monthly")
-        params["Security Deposit Months"] = get_float("Security Deposit Months", 6.0)
-        params["Security Deposit Amount"] = get_float("Security Deposit Amount", 11418000.0)
-        params["Refundable Deposit"] = get_str("Refundable Deposit", "Yes")
+        params["Billing Frequency"] = get_str("Billing Frequency", ["BillingFrequency"], "Monthly")
+        params["Security Deposit Months"] = get_float("Security Deposit Months", ["Security Deposit (number of months)", "Security Deposit (Months)"], 6.0)
+        params["Security Deposit Amount"] = get_float("Security Deposit Amount", ["Security Deposit Amount (INR)", "Security Deposit"], 11418000.0)
+        params["Refundable Deposit"] = get_str("Refundable Deposit", ["Refundable"], "Yes")
         
         # Capex & Cost factors
-        total_fitout = get_float("Fitout Cost", 34000000.0)
+        total_fitout = get_float("Fitout Cost", ["Total Fitout Cost", "Fitout Cost Amount", "Fitouts"], 34000000.0)
         params["Fitout Cost"] = total_fitout
-        params["Useful Life Years"] = get_float("Useful Life Years", 5.0)
-        params["Residual Value"] = get_float("Residual Value", 0.0)
-        params["Discount Rate"] = get_float("Discount Rate", 0.08)
-        params["Incremental Borrowing Rate"] = get_float("Incremental Borrowing Rate", 0.08)
-        params["Cost of Capital"] = get_float("Cost of Capital", 0.105)
-        params["Addnl.Deposit -energy(Refundable)"] = get_float("Addnl.Deposit -energy(Refundable)", 500000.0)
+        params["Useful Life Years"] = get_float("Useful Life Years", ["Useful Life", "Useful Life (Years)"], 5.0)
+        params["Residual Value"] = get_float("Residual Value", ["ResidualValue"], 0.0)
+        params["Discount Rate"] = get_float("Discount Rate", ["Discounting Rate", "Discount Rate %"], 0.08)
+        params["Incremental Borrowing Rate"] = get_float("Incremental Borrowing Rate", ["IBR", "Incremental Borrowing Rate %", "IBR %"], 0.08)
+        params["Cost of Capital"] = get_float("Cost of Capital", ["WACC", "Cost of Capital (WACC) %", "WACC %"], 0.105)
+        params["Addnl.Deposit -energy(Refundable)"] = get_float("Addnl.Deposit -energy(Refundable)", ["Energy Deposit", "Energy Security Deposit", "Energy Deposit Amount"], 500000.0)
         
         # Add new parameters missing in original but parsed if they exist
-        params["Imputed Interest Rate"] = get_float("Imputed Interest Rate", 0.0711)
-        params["Ready Reckoner Rate"] = get_float("Ready Reckoner Rate", 15000.0)
-        params["Exchange Rate"] = get_float("Exchange Rate", 105.02)
-        params["Incremental Restoration Cost Sqft"] = get_float("Incremental Restoration Cost Sqft", 82.6)
+        params["Imputed Interest Rate"] = get_float("Imputed Interest Rate", ["Imputed Interest Rate %", "Imputed Interest", "Imputed Rate"], 0.0711)
+        params["Ready Reckoner Rate"] = get_float("Ready Reckoner Rate", ["Ready Reckoner Rate (INR/sq m)", "Ready Reckoner"], 15000.0)
+        params["Exchange Rate"] = get_float("Exchange Rate", ["Forex Rate", "Exchange Rate (INR/Euro)", "Forex"], 105.02)
+        params["Incremental Restoration Cost Sqft"] = get_float("Incremental Restoration Cost Sqft", ["Restoration Cost per Sq ft (ARO)", "Restoration Cost per Sqft", "ARO Rate", "ARO Cost per Sqft"], 82.6)
         
-        total_pm = get_float("PM Cost Over Lease", 2500000.0)
+        total_pm = get_float("PM Cost Over Lease", ["Preventive Maintenance Cost", "PM Cost", "Maintenance Cost over Lease"], 2500000.0)
         params["PM Cost Over Lease"] = total_pm
 
         # Try to parse dynamic schedules from CAPEX and PM sheet if it exists
@@ -309,35 +339,51 @@ def parse_input_xlsx(file_bytes):
                 # 1. Fitout breakdown costs
                 fitout_costs_dict = {}
                 for key, val in raw_params.items():
-                    if key.startswith("Fitout Phase ") and key.endswith(" Cost"):
-                        try:
-                            phase_num = int(key.replace("Fitout Phase ", "").replace(" Cost", "").strip())
-                            if val is not None and not pd.isna(val):
-                                fitout_costs_dict[phase_num] = float(val)
-                        except Exception:
-                            pass
+                    key_clean = key.lower()
+                    if "fitout" in key_clean and "phase" in key_clean:
+                        import re
+                        m = re.search(r"\d+", key)
+                        if m:
+                            try:
+                                phase_num = int(m.group(0))
+                                if val is not None and not pd.isna(val):
+                                    fitout_costs_dict[phase_num] = float(val)
+                            except Exception:
+                                pass
                 for p_num in sorted(fitout_costs_dict.keys()):
                     fitout_breakdown.append(fitout_costs_dict[p_num])
                             
                 # 2. Capex schedule
                 for key, val in raw_params.items():
-                    if key.startswith("Capex FY"):
-                        try:
-                            yr = int(key.replace("Capex FY", "").strip())
-                            if val is not None and not pd.isna(val):
-                                capex_sched[yr] = float(val)
-                        except Exception:
-                            pass
+                    key_clean = key.lower().replace(" ", "")
+                    if "capex" in key_clean:
+                        import re
+                        m = re.search(r"\b(20\d{2})\b|(?<=fy)(20\d{2})", key_clean)
+                        if not m:
+                            m = re.search(r"\d{4}", key)
+                        if m:
+                            try:
+                                yr = int(m.group(0))
+                                if val is not None and not pd.isna(val):
+                                    capex_sched[yr] = float(val)
+                            except Exception:
+                                pass
                             
                 # 3. PM schedule
                 for key, val in raw_params.items():
-                    if key.startswith("PM FY"):
-                        try:
-                            yr = int(key.replace("PM FY", "").strip())
-                            if val is not None and not pd.isna(val):
-                                pm_sched[yr] = float(val)
-                        except Exception:
-                            pass
+                    key_clean = key.lower().replace(" ", "")
+                    if "pm" in key_clean or "maintenance" in key_clean:
+                        import re
+                        m = re.search(r"\b(20\d{2})\b|(?<=fy)(20\d{2})", key_clean)
+                        if not m:
+                            m = re.search(r"\d{4}", key)
+                        if m:
+                            try:
+                                yr = int(m.group(0))
+                                if val is not None and not pd.isna(val):
+                                    pm_sched[yr] = float(val)
+                            except Exception:
+                                pass
         except Exception:
             pass
 

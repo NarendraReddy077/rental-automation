@@ -71,7 +71,7 @@ def compile_output_workbook(template_path, params):
     # Adjust all other sheet formulas in the template that reference the shifted rows in CAPEX and PM sheet
     # Run this FIRST so that any dynamically injected formulas during .inject() calls are not double-shifted
     N = len(params.get("Fitout Cost Breakdown", []))
-    offset = 6 * (N - 3)
+    offset = 6 * (N - 3) if N > 3 else 0
     if offset != 0:
         import re
         pattern = re.compile(r"('CAPEX and PM'!|CAPEX and PM!)(\$?[A-Z]+)(\$?)([0-9]+)")
