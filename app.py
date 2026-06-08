@@ -195,6 +195,8 @@ default_params = {
     "4 Wheeler Rate": 1500.0,
     "2 Wheeler Slots": 50,
     "2 Wheeler Rate": 1000.0,
+    "Parking Escalation %": 0.15,
+    "Parking Escalation Frequency Months": 36,
     "Security Deposit Amount": 11418000,
     "Addnl.Deposit -energy(Refundable)": 500000,
     "Fitout Cost": 34000000,
@@ -287,6 +289,12 @@ with st.sidebar.expander("▶ Parking Configuration"):
         two_w_slots = st.number_input("2 Wheeler Slots", value=int(params.get("2 Wheeler Slots", 50)), key=f"two_w_slots{key_suffix}", step=1, help="Number of chargeable 2-wheeler parking slots.")
     with col_p4:
         two_w_rate = st.number_input("2 Wheeler Rate (per mo)", value=float(params.get("2 Wheeler Rate", 1000.0)), key=f"two_w_rate{key_suffix}", step=100.0, help="Monthly rate per 2-wheeler slot.")
+        
+    col_p5, col_p6 = st.columns(2)
+    with col_p5:
+        parking_esc = st.slider("Parking Escalation %", min_value=0.0, max_value=0.5, value=float(params.get("Parking Escalation %", params.get("Escalation %", 0.15))), key=f"parking_esc{key_suffix}", step=0.01, help="The parking rate escalation percentage.")
+    with col_p6:
+        parking_esc_freq = st.number_input("Parking Escalation Freq (Months)", value=int(params.get("Parking Escalation Frequency Months", params.get("Escalation Frequency Months", 36))), key=f"parking_esc_freq{key_suffix}", step=12, help="Interval in months between parking rate escalations.")
 
 # Expander 2: CAPEX & PM Investment Schedule
 with st.sidebar.expander("▶ CAPEX & PM Schedule"):
@@ -440,6 +448,8 @@ ui_params = {
     "4 Wheeler Rate": float(four_w_rate),
     "2 Wheeler Slots": int(two_w_slots),
     "2 Wheeler Rate": float(two_w_rate),
+    "Parking Escalation %": float(parking_esc),
+    "Parking Escalation Frequency Months": int(parking_esc_freq),
     
     "Fitout Cost": float(fitout_total),
     "Fitout Cost Breakdown": fitout_costs,

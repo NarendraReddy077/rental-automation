@@ -140,6 +140,28 @@ def parse_input_xlsx(file_bytes):
         else:
             cam_freq_val = 12
         params["CAM Escalation Frequency Months"] = cam_freq_val
+        
+        # Parking escalation parameters (fallback to Rent Escalation if not specified)
+        park_esc_val = raw_params.get("Parking Escalation %")
+        if park_esc_val is not None and not pd.isna(park_esc_val):
+            params["Parking Escalation %"] = float(park_esc_val)
+        else:
+            params["Parking Escalation %"] = params["Escalation %"]
+            
+        park_freq_val = raw_params.get("Parking Escalation Frequency Months")
+        if park_freq_val is not None and not pd.isna(park_freq_val):
+            try:
+                park_freq_val = float(park_freq_val)
+                if park_freq_val < 1.0:
+                    park_freq_val = int(round(park_freq_val * 100))
+                else:
+                    park_freq_val = int(park_freq_val)
+            except Exception:
+                park_freq_val = params["Escalation Frequency Months"]
+        else:
+            park_freq_val = params["Escalation Frequency Months"]
+        params["Parking Escalation Frequency Months"] = park_freq_val
+
         params["Billing Frequency"] = get_str("Billing Frequency", "Monthly")
         params["Security Deposit Months"] = get_float("Security Deposit Months", 6.0)
         params["Security Deposit Amount"] = get_float("Security Deposit Amount", 11418000.0)

@@ -12,6 +12,8 @@ def inject(ws, params):
     rent_esc_freq = params.get("Escalation Frequency Months", 36)
     cam_esc_pct = params.get("CAM Escalation %", 0.05)
     cam_esc_freq = params.get("CAM Escalation Frequency Months", 12)
+    parking_esc_pct = params.get("Parking Escalation %", rent_esc_pct)
+    parking_esc_freq = params.get("Parking Escalation Frequency Months", rent_esc_freq)
     term_months = params.get("Lease Term Months", 72)
     
     # Calculate how many months we actually need to write
@@ -102,9 +104,9 @@ def inject(ws, params):
             else:
                 ws.cell(row=r, column=8, value=f"=H{r-1}")
                 
-            # Parking Escalation (escalates with rent)
-            if (m - 1) % rent_esc_freq == 0:
-                ws.cell(row=r, column=9, value=f"=I{r-1}*(1+{rent_esc_pct})")
+            # Parking Escalation
+            if (m - 1) % parking_esc_freq == 0:
+                ws.cell(row=r, column=9, value=f"=I{r-1}*(1+{parking_esc_pct})")
             else:
                 ws.cell(row=r, column=9, value=f"=I{r-1}")
                 

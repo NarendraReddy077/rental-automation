@@ -53,8 +53,14 @@ def simulate(params, capex_pm_df=None):
         yearly_rent = rent_rate * rent_factor * area_sqft * active_months
         yearly_cam = cam_rate * cam_factor * area_sqft * active_months
         
-        # Parking escalation (escalates with rent)
-        parking_factor = rent_factor
+        # Parking escalation
+        parking_esc_freq_years = params.get("Parking Escalation Frequency Months", params.get("Escalation Frequency Months", 36)) // 12
+        if parking_esc_freq_years <= 0:
+            parking_esc_freq_years = 3
+        parking_esc_pct = params.get("Parking Escalation %", params.get("Escalation %", 0.15))
+        parking_escalations = (yr - 1) // parking_esc_freq_years
+        parking_factor = (1.0 + parking_esc_pct) ** parking_escalations
+        
         initial_monthly_parking = ((params.get("4 Wheeler Rate", 1500.0) * params.get("4 Wheeler Slots", 80)) +
                                    (params.get("2 Wheeler Rate", 1000.0) * params.get("2 Wheeler Slots", 50)))
         yearly_parking = initial_monthly_parking * parking_factor * active_months

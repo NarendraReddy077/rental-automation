@@ -94,13 +94,14 @@ def simulate(params):
     initial_monthly_parking = (four_w_rate * four_w_slots) + (two_w_rate * two_w_slots)
     
     rent_esc_pct = params.get("Escalation %", 0.15)
-    rent_esc_freq = params.get("Escalation Frequency Months", 36)
+    parking_esc_pct = params.get("Parking Escalation %", rent_esc_pct)
+    parking_esc_freq = params.get("Parking Escalation Frequency Months", params.get("Escalation Frequency Months", 36))
     
     total_parking_cost = 0.0
     current_parking_rate = initial_monthly_parking
     for m in range(1, term_months + 1):
-        if m > 1 and (m - 1) % rent_esc_freq == 0:
-            current_parking_rate *= (1.0 + rent_esc_pct)
+        if m > 1 and (m - 1) % parking_esc_freq == 0:
+            current_parking_rate *= (1.0 + parking_esc_pct)
         total_parking_cost += current_parking_rate
         
     average_monthly_parking = total_parking_cost / term_months
