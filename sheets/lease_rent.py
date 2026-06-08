@@ -19,10 +19,18 @@ def inject(ws, params):
     # The default specimen template has 72 monthly rows (ending at row 102).
     # Month 1 is row 31. Month 72 is row 102.
     # If term_months > 72, we insert (term_months - 72) rows at Row 103 (above original summary row).
-    max_months = max(72, term_months)
+    max_months = term_months
     if term_months > 72:
         inserted = term_months - 72
         ws.insert_rows(103, amount=inserted)
+    elif term_months < 72:
+        deleted = 72 - term_months
+        ws.delete_rows(31 + term_months, amount=deleted)
+
+    ws["C22"] = params.get("4 Wheeler Rate", 1500.0)
+    ws["D22"] = params.get("4 Wheeler Slots", 80)
+    ws["C23"] = params.get("2 Wheeler Rate", 1000.0)
+    ws["D23"] = params.get("2 Wheeler Slots", 50)
 
     # Update starting date and calendar year dynamically
     ws["B31"] = "=Main!B4"
@@ -61,15 +69,30 @@ def inject(ws, params):
             ws.cell(row=r, column=8, value=0.0)  # Column H: Rental rate
             ws.cell(row=r, column=9, value="")   # Column I: Car Parks
             ws.cell(row=r, column=10, value=0.0) # Column J: CAM rate
+            ws.cell(row=r, column=11, value=0.0) # Column K: Rental SQF
+            ws.cell(row=r, column=12, value=0.0) # Column L: CAM SQF
+            ws.cell(row=r, column=13, value=0.0) # Column M: Total
             continue
             
-        # Write Area columns
+        # Write Date, Month, Escalation, Rate, and Amount columns
         if m == 1:
+            ws.cell(row=r, column=1, value="=YEAR(B31)")
+            ws.cell(row=r, column=2, value="=Main!B4")
             ws.cell(row=r, column=5, value="='Rent Calculation'!$F$23")
             ws.cell(row=r, column=6, value="='Rent Calculation'!G23")
             ws.cell(row=r, column=8, value="=Main!B7")
+            ws.cell(row=r, column=9, value="=E24")
             ws.cell(row=r, column=10, value="=Main!B8")
         else:
+            # Year Column A
+            if m > 8 and (m - 9) % 12 == 0:
+                ws.cell(row=r, column=1, value=f"=A{r-1}+1")
+            else:
+                ws.cell(row=r, column=1, value=f"=A{r-1}")
+            
+            # From Date Column B
+            ws.cell(row=r, column=2, value=f"=C{r-1}+1")
+            
             ws.cell(row=r, column=5, value=f"=E{r-1}")
             ws.cell(row=r, column=6, value=f"=F{r-1}")
             
@@ -79,11 +102,25 @@ def inject(ws, params):
             else:
                 ws.cell(row=r, column=8, value=f"=H{r-1}")
                 
+            # Parking Escalation (escalates with rent)
+            if (m - 1) % rent_esc_freq == 0:
+                ws.cell(row=r, column=9, value=f"=I{r-1}*(1+{rent_esc_pct})")
+            else:
+                ws.cell(row=r, column=9, value=f"=I{r-1}")
+                
             # CAM Escalation
             if (m - 1) % cam_esc_freq == 0:
                 ws.cell(row=r, column=10, value=f"=J{r-1}*(1+{cam_esc_pct})")
             else:
                 ws.cell(row=r, column=10, value=f"=J{r-1}")
+                
+        # Common columns for all active months
+        ws.cell(row=r, column=3, value=f"=EOMONTH(B{r},0)") # Column C: To Date
+        ws.cell(row=r, column=4, value=1)                  # Column D: Months
+        ws.cell(row=r, column=7, value="")                 # Column G: Escalation
+        ws.cell(row=r, column=11, value=f"=H{r}*E{r}")     # Column K: Rental SQF
+        ws.cell(row=r, column=12, value=f"=J{r}*E{r}")     # Column L: CAM SQF
+        ws.cell(row=r, column=13, value=f"=I{r}+K{r}+L{r}") # Column M: Total
                 
         # Determine if this row is a Year boundary (for years 1 to 10)
         # Year 1 summary is written at row 39 (Month 9)
@@ -101,6 +138,7 @@ def inject(ws, params):
                     end_sum = start_sum + 11
                 ws.cell(row=r, column=14, value=f"=SUM(K{start_sum}:K{end_sum})") # Column N: Rentals
                 ws.cell(row=r, column=15, value=f"=SUM(L{start_sum}:L{end_sum})") # Column O: CAM
+                ws.cell(row=r, column=16, value=f"=SUM(I{start_sum}:I{end_sum})") # Column P: Parking
                 summary_rows[y] = r
 
     # Calculate final year number and the final summary row index
@@ -124,15 +162,24 @@ def inject(ws, params):
     ws.cell(row=final_sum_row, column=2, value="")
     ws.cell(row=final_sum_row, column=14, value=f"=SUM(K{start_sum}:K{end_sum})") # Column N
     ws.cell(row=final_sum_row, column=15, value=f"=SUM(L{start_sum}:L{end_sum})") # Column O
+    ws.cell(row=final_sum_row, column=16, value=f"=SUM(I{start_sum}:I{end_sum})") # Column P
     summary_rows[final_year] = final_sum_row
     
     # Write the grand total row at final_sum_row + 1
     total_row = final_sum_row + 1
+    ws.cell(row=total_row, column=9, value=f"=SUM(I31:I{30 + term_months})") # Column I
     ws.cell(row=total_row, column=11, value=f"=SUM(K31:K{30 + term_months})") # Column K
     ws.cell(row=total_row, column=12, value=f"=SUM(L31:L{30 + term_months})") # Column L
     ws.cell(row=total_row, column=13, value=f"=SUM(M31:M{30 + term_months})") # Column M
     ws.cell(row=total_row, column=14, value=f"=SUM(N31:N{final_sum_row})") # Column N
     ws.cell(row=total_row, column=15, value=f"=SUM(O31:O{final_sum_row})") # Column O
+    ws.cell(row=total_row, column=16, value=f"=SUM(P31:P{final_sum_row})") # Column P
+
+    # Update calendar year summary table (rows 19 to 25) to reference correct monthly row bounds
+    for r_sum in range(19, 26):
+        ws.cell(row=r_sum, column=8, value=f"=SUMIF($A$31:$A$1048576,$G{r_sum},$D$31:$D{30 + term_months})")
+        ws.cell(row=r_sum, column=9, value=f"=SUMIF($A$31:$A$1048576,$G{r_sum},$K$31:$K{30 + term_months})")
+        ws.cell(row=r_sum, column=10, value=f"=SUMIF($A$31:$A$1048576,$G{r_sum},$L$31:$L{30 + term_months})")
 
     # Update Rent Calculation sheet references dynamically using ws.parent
     wb = ws.parent
@@ -145,8 +192,10 @@ def inject(ws, params):
             if y in summary_rows:
                 sum_row = summary_rows[y]
                 rc_ws.cell(row=r_rc, column=3, value=f"='Lease Rent'!N{sum_row}") # Column C: Rent (INR)
+                rc_ws.cell(row=r_rc, column=7, value=f"='Lease Rent'!P{sum_row}") # Column G: Car Park (INR)
                 rc_ws.cell(row=r_rc, column=9, value=f"='Lease Rent'!O{sum_row}") # Column I: CAM (INR)
             else:
                 # Inactive year: set to 0.0
                 rc_ws.cell(row=r_rc, column=3, value=0.0)
+                rc_ws.cell(row=r_rc, column=7, value=0.0)
                 rc_ws.cell(row=r_rc, column=9, value=0.0)

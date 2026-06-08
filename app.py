@@ -191,6 +191,10 @@ default_params = {
     "Escalation Frequency Months": 36,
     "CAM Escalation %": 0.05,
     "CAM Escalation Frequency Months": 12,
+    "4 Wheeler Slots": 80,
+    "4 Wheeler Rate": 1500.0,
+    "2 Wheeler Slots": 50,
+    "2 Wheeler Rate": 1000.0,
     "Security Deposit Amount": 11418000,
     "Addnl.Deposit -energy(Refundable)": 500000,
     "Fitout Cost": 34000000,
@@ -270,6 +274,19 @@ with st.sidebar.expander("▶ Real Estate & Lease Properties", expanded=True):
     
     sec_deposit = st.number_input("Security Deposit Amount (INR)", value=int(params["Security Deposit Amount"]), key=f"sec_deposit{key_suffix}", step=50000, help="Interest-free refundable security deposit amount.")
     energy_dep = st.number_input("Energy Deposit Amount (INR)", value=int(params["Addnl.Deposit -energy(Refundable)"]), key=f"energy_dep{key_suffix}", step=10000, help="Additional refundable security deposit specifically for power/utilities.")
+
+# Expander 1.5: Parking Configuration
+with st.sidebar.expander("▶ Parking Configuration"):
+    col_p1, col_p2 = st.columns(2)
+    with col_p1:
+        four_w_slots = st.number_input("4 Wheeler Slots", value=int(params.get("4 Wheeler Slots", 80)), key=f"four_w_slots{key_suffix}", step=1, help="Number of chargeable 4-wheeler parking slots.")
+    with col_p2:
+        four_w_rate = st.number_input("4 Wheeler Rate (per mo)", value=float(params.get("4 Wheeler Rate", 1500.0)), key=f"four_w_rate{key_suffix}", step=100.0, help="Monthly rate per 4-wheeler slot.")
+    col_p3, col_p4 = st.columns(2)
+    with col_p3:
+        two_w_slots = st.number_input("2 Wheeler Slots", value=int(params.get("2 Wheeler Slots", 50)), key=f"two_w_slots{key_suffix}", step=1, help="Number of chargeable 2-wheeler parking slots.")
+    with col_p4:
+        two_w_rate = st.number_input("2 Wheeler Rate (per mo)", value=float(params.get("2 Wheeler Rate", 1000.0)), key=f"two_w_rate{key_suffix}", step=100.0, help="Monthly rate per 2-wheeler slot.")
 
 # Expander 2: CAPEX & PM Investment Schedule
 with st.sidebar.expander("▶ CAPEX & PM Schedule"):
@@ -419,6 +436,10 @@ ui_params = {
     "CAM Escalation Frequency Months": int(cam_esc_freq),
     "Security Deposit Amount": float(sec_deposit),
     "Addnl.Deposit -energy(Refundable)": float(energy_dep),
+    "4 Wheeler Slots": int(four_w_slots),
+    "4 Wheeler Rate": float(four_w_rate),
+    "2 Wheeler Slots": int(two_w_slots),
+    "2 Wheeler Rate": float(two_w_rate),
     
     "Fitout Cost": float(fitout_total),
     "Fitout Cost Breakdown": fitout_costs,
@@ -494,11 +515,6 @@ metrics_html = f"""
         <span class="stat-label">Initial Rent + CAM Rate</span>
         <span class="stat-value">{ui_params['Currency']} {total_rent_cam:.2f}</span>
         <span class="stat-meta">Rent: {ui_params['Rent Per Sqft']:.1f} | CAM: {ui_params['Quoted CAM']:.2f}</span>
-    </div>
-    <div class="stat-cell">
-        <span class="stat-label">Project Net Outflow (NPV)</span>
-        <span class="stat-value">Euro {npv_value/1000000:,.2f} M</span>
-        <span class="stat-meta">WACC Rate: {ui_params['Cost of Capital']*100:.2f}%</span>
     </div>
     <div class="stat-cell">
         <span class="stat-label">Lease Duration</span>

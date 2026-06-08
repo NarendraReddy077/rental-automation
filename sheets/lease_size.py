@@ -53,6 +53,12 @@ def simulate(params, capex_pm_df=None):
         yearly_rent = rent_rate * rent_factor * area_sqft * active_months
         yearly_cam = cam_rate * cam_factor * area_sqft * active_months
         
+        # Parking escalation (escalates with rent)
+        parking_factor = rent_factor
+        initial_monthly_parking = ((params.get("4 Wheeler Rate", 1500.0) * params.get("4 Wheeler Slots", 80)) +
+                                   (params.get("2 Wheeler Rate", 1000.0) * params.get("2 Wheeler Slots", 50)))
+        yearly_parking = initial_monthly_parking * parking_factor * active_months
+        
         # Add capex and maintenance if data is available from capex_pm simulation
         capex_cost = 0.0
         pm_cost = 0.0
@@ -63,7 +69,7 @@ def simulate(params, capex_pm_df=None):
                 pm_cost = match_row.iloc[0]["Maintenance Cost"]
                 
         # Total nominal cash outflow
-        total_nominal = yearly_rent + yearly_cam + capex_cost + pm_cost
+        total_nominal = yearly_rent + yearly_cam + yearly_parking + capex_cost + pm_cost
         
         # Discount factor
         discount_factor = 1.0 / ((1.0 + wacc) ** yr)
@@ -73,6 +79,7 @@ def simulate(params, capex_pm_df=None):
             "Year": f"Year {yr}",
             "Rent Cost": round(yearly_rent, 2),
             "CAM Cost": round(yearly_cam, 2),
+            "Parking Cost": round(yearly_parking, 2),
             "Capex": round(capex_cost, 2),
             "Maintenance": round(pm_cost, 2),
             "Total Outflow": round(total_nominal, 2),

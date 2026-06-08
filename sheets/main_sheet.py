@@ -37,8 +37,11 @@ def inject(ws, params):
     else:
         ws["B15"] = f"{int(params['CAM Escalation %'] * 100)}% every {cam_esc_freq} months"
     
-    ws["B17"] = params["Addnl.Deposit -energy(Refundable)"]
-    ws["B18"] = params["Incremental Restoration Cost Sqft"]
+    ws["B12"] = params.get("Cost of Capital", 0.105)
+    ws["B16"] = params.get("4 Wheeler Slots", 80)
+    ws["B17"] = params.get("4 Wheeler Rate", 1500.0)
+    ws["B18"] = params.get("2 Wheeler Slots", 50)
+    ws["B19"] = params.get("2 Wheeler Rate", 1000.0)
 
 def simulate(params):
     """

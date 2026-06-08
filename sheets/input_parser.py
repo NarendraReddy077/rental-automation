@@ -80,6 +80,10 @@ def parse_input_xlsx(file_bytes):
         
         params["Chargeable Area Sqft"] = get_float("Chargeable Area Sqft", 9515.0)
         params["Parking Slots"] = get_int("Parking Slots", 20)
+        params["4 Wheeler Slots"] = get_int("4 Wheeler Slots", 80)
+        params["4 Wheeler Rate"] = get_float("4 Wheeler Rate", 1500.0)
+        params["2 Wheeler Slots"] = get_int("2 Wheeler Slots", 50)
+        params["2 Wheeler Rate"] = get_float("2 Wheeler Rate", 1000.0)
         
         start_date = parse_date(raw_params.get("Agreement Start Date"), datetime.date(2026, 4, 1))
         end_date = parse_date(raw_params.get("Agreement End Date"), datetime.date(2031, 3, 31))
@@ -170,6 +174,32 @@ def parse_input_xlsx(file_bytes):
         
         try:
             wb = openpyxl.load_workbook(io.BytesIO(raw_data), data_only=True)
+            if "Lease Rent" in wb.sheetnames:
+                ws_lr = wb["Lease Rent"]
+                val_c22 = ws_lr["C22"].value
+                val_d22 = ws_lr["D22"].value
+                val_c23 = ws_lr["C23"].value
+                val_d23 = ws_lr["D23"].value
+                if val_c22 is not None:
+                    try:
+                        params["4 Wheeler Rate"] = float(val_c22)
+                    except Exception:
+                        pass
+                if val_d22 is not None:
+                    try:
+                        params["4 Wheeler Slots"] = int(float(val_d22))
+                    except Exception:
+                        pass
+                if val_c23 is not None:
+                    try:
+                        params["2 Wheeler Rate"] = float(val_c23)
+                    except Exception:
+                        pass
+                if val_d23 is not None:
+                    try:
+                        params["2 Wheeler Slots"] = int(float(val_d23))
+                    except Exception:
+                        pass
             if "CAPEX and PM" in wb.sheetnames:
                 ws = wb["CAPEX and PM"]
                 
@@ -201,9 +231,7 @@ def parse_input_xlsx(file_bytes):
                             phase_m[yr] = int(m_val) if isinstance(m_val, (int, float)) else 0
                         fitout_active_months_breakdown.append(phase_m)
                 
-                # 2. Parse Capex schedule and useful lives from row 36 (years), row 38 (values), and column E (active months)
-                # Wait! Since we might have inserted rows, let's find the Capex headers row dynamically!
-                # We can search for the row where A is "Investment name" and B is "Capex"
+                # 2. Parse Capex schedule and useful lives
                 r_capex_header = 36
                 for r in range(1, 100):
                     if ws.cell(row=r, column=1).value == "Investment name" and ws.cell(row=r, column=2).value == "Capex":

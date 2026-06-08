@@ -11,6 +11,16 @@ def inject(ws, params):
     ws["F27"] = params.get("Amortization Period Months", 72)
     ws["F33"] = params.get("Security Deposit Months", 10)
     ws["F118"] = params.get("Opex Others Per Month", 654.0)
+    
+    # Link parking counts and rates dynamically to the Lease Rent sheet input table
+    ws["F44"] = "='Lease Rent'!D22"
+    ws["F45"] = "='Lease Rent'!C22"
+    ws["F47"] = "='Lease Rent'!D23"
+    ws["F48"] = "='Lease Rent'!C23"
+
+    # Link expected date of Agreement to close to the correct dynamic Lease Rent cell
+    term_months = params.get("Lease Term Months", 72)
+    ws["F52"] = f"='Lease Rent'!C{30 + term_months}"
 
     # Disable Outline Level selectors / group symbols in the sheet
     if hasattr(ws, 'sheet_properties') and ws.sheet_properties:
@@ -76,7 +86,25 @@ def simulate(params):
     
     # Calculate Net Rent I Components (per sqft/mo)
     eff_rent = rent_rate
-    eff_parking = 0.0  # in specimen, parking effect is 0
+    # Calculate Parking effect on rent
+    four_w_rate = params.get("4 Wheeler Rate", 1500.0)
+    four_w_slots = params.get("4 Wheeler Slots", 80)
+    two_w_rate = params.get("2 Wheeler Rate", 1000.0)
+    two_w_slots = params.get("2 Wheeler Slots", 50)
+    initial_monthly_parking = (four_w_rate * four_w_slots) + (two_w_rate * two_w_slots)
+    
+    rent_esc_pct = params.get("Escalation %", 0.15)
+    rent_esc_freq = params.get("Escalation Frequency Months", 36)
+    
+    total_parking_cost = 0.0
+    current_parking_rate = initial_monthly_parking
+    for m in range(1, term_months + 1):
+        if m > 1 and (m - 1) % rent_esc_freq == 0:
+            current_parking_rate *= (1.0 + rent_esc_pct)
+        total_parking_cost += current_parking_rate
+        
+    average_monthly_parking = total_parking_cost / term_months
+    eff_parking = average_monthly_parking / area_sqft
     eff_sd_carrying = carrying_cost_per_sqft
     eff_cam = cam_rate
     eff_brokerage = 0.0  # Brokerage is 0 in specimen
