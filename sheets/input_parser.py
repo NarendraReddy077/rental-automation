@@ -39,13 +39,36 @@ def parse_input_xlsx(file_bytes):
 
         # Build dictionary from Name-Value pairs
         raw_params = {}
+        current_section = "rent"
         if field_col in df.columns and value_col in df.columns:
             for idx, row in df.iterrows():
                 name = str(row[field_col]).strip()
                 val = row[value_col]
                 if pd.isna(val):
                     val = None
-                raw_params[name] = val
+                
+                # Update current section based on keywords in name
+                name_lower = name.lower()
+                if "cam" in name_lower:
+                    current_section = "cam"
+                elif "parking" in name_lower or "wheeler" in name_lower:
+                    current_section = "parking"
+                elif "fitout" in name_lower or "capex" in name_lower:
+                    current_section = "capex"
+                elif "pm" in name_lower or "maintenance" in name_lower:
+                    current_section = "pm"
+                
+                # If the key is a generic escalation key, qualify it with the section name
+                key_to_store = name
+                if name_lower in ["escalation %", "escalation frequency months", "escalation frequency"]:
+                    if current_section == "cam":
+                        key_to_store = f"CAM {name}"
+                    elif current_section == "parking":
+                        key_to_store = f"Parking {name}"
+                    elif current_section == "rent":
+                        key_to_store = f"Rent {name}"
+                
+                raw_params[key_to_store] = val
         
         # Helper to parse dates
         def parse_date(date_val, default=None):
@@ -134,7 +157,7 @@ def parse_input_xlsx(file_bytes):
         params["Lease Term Months"] = term_months
         
         params["Rent Per Sqft"] = get_float("Rent Per Sqft", ["Rent Per Sq.ft.", "Rent per Sqft", "Rent Per Sqft/month", "Base Rent"], 120.0)
-        params["Quoted CAM"] = get_float("Quoted CAM", ["CAM", "CAM Per Sqft", "Quoted CAM (per sq ft/month)"], 15.48)
+        params["Quoted CAM"] = get_float("Quoted CAM", ["CAM", "CAM Per Sqft", "Quoted CAM (per sq ft/month)", "CAM per Sq ft", "CAM per Sq.ft.", "CAM per Sqft", "CAM Rate"], 15.48)
         
         esc_val = get_value_by_aliases(["Escalation %", "Rent Escalation %", "Escalation Percentage", "Rent Escalation Pct"])
         params["Escalation %"] = float(esc_val) if esc_val is not None and not pd.isna(esc_val) else 0.15
