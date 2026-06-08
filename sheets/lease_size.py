@@ -25,34 +25,28 @@ def simulate(params, capex_pm_df=None):
     cam_rate = params["Quoted CAM"]
     wacc = params.get("Cost of Capital", 0.105)
     
-    # Calculate years 1-10 cash outflows
-    # In specimen, rent escalates by 15% every 3 years.
-    # Year 1-3: Rent = Base Rent
-    # Year 4-6: Rent = Base Rent * 1.15
-    # Year 7-9: Rent = Base Rent * 1.15 * 1.15
-    # Year 10: Rent = Base Rent * 1.15 * 1.15 * 1.15
-    
-    # CAM escalates by 5% every year.
-    
     years = list(range(1, 11))
     rows = []
     
+    esc_freq_years = params.get("Escalation Frequency Months", 36) // 12
+    if esc_freq_years <= 0:
+        esc_freq_years = 3
+    esc_pct = params.get("Escalation %", 0.15)
+    term_months = params.get("Lease Term Months", 72)
+    
     for yr in years:
+        # Calculate active months of lease in this year
+        active_months = max(0, min(12, term_months - 12 * (yr - 1)))
+        
         # Rent escalation
-        if yr <= 3:
-            rent_factor = 1.0
-        elif yr <= 6:
-            rent_factor = 1.0 + params.get("Escalation %", 0.15)
-        elif yr <= 9:
-            rent_factor = (1.0 + params.get("Escalation %", 0.15)) ** 2
-        else:
-            rent_factor = (1.0 + params.get("Escalation %", 0.15)) ** 3
+        escalations = (yr - 1) // esc_freq_years
+        rent_factor = (1.0 + esc_pct) ** escalations
             
         # CAM escalation
         cam_factor = (1.0 + params.get("CAM Escalation %", 0.05)) ** (yr - 1)
         
-        yearly_rent = rent_rate * rent_factor * area_sqft * 12
-        yearly_cam = cam_rate * cam_factor * area_sqft * 12
+        yearly_rent = rent_rate * rent_factor * area_sqft * active_months
+        yearly_cam = cam_rate * cam_factor * area_sqft * active_months
         
         # Add capex and maintenance if data is available from capex_pm simulation
         capex_cost = 0.0
