@@ -294,7 +294,7 @@ with st.sidebar.expander("▶ Parking Configuration"):
     with col_p5:
         parking_esc = st.slider("Parking Escalation %", min_value=0.0, max_value=0.5, value=float(params.get("Parking Escalation %", params.get("Escalation %", 0.15))), key=f"parking_esc{key_suffix}", step=0.01, help="The parking rate escalation percentage.")
     with col_p6:
-        parking_esc_freq = st.number_input("Parking Escalation Freq (Months)", value=int(params.get("Parking Escalation Frequency Months", params.get("Escalation Frequency Months", 36))), key=f"parking_esc_freq{key_suffix}", step=12, help="Interval in months between parking rate escalations.")
+        parking_esc_freq = st.number_input("Parking Escalation Freq (Months)", value=int(params.get("Parking Escalation Frequency Months", params.get("Escalation Frequency Months", 36))), key=f"parking_esc_freq{key_suffix}", step=1, help="Interval in months between parking rate escalations.")
 
 # Expander 2: CAPEX & PM Investment Schedule
 with st.sidebar.expander("▶ CAPEX & PM Schedule"):
