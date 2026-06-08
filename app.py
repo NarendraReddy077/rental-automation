@@ -8,6 +8,7 @@ import io
 import sheets.main_sheet as main_sheet
 import sheets.rent_calculation as rent_calculation
 import sheets.lease_size as lease_size
+import sheets.lease_rent as lease_rent
 import sheets.capex_pm as capex_pm
 import sheets.security_deposit as security_deposit
 from sheets.capex_pm import calculate_fy_months
@@ -123,6 +124,9 @@ def compile_output_workbook(template_path, params):
     
     # Populate Lease Size sheet
     lease_size.inject(wb["Lease Size"], params)
+    
+    # Populate Lease Rent sheet
+    lease_rent.inject(wb["Lease Rent"], params)
     
     # Populate CAPEX and PM sheet
     capex_pm.inject(wb["CAPEX and PM"], params)

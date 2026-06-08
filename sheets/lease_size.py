@@ -51,7 +51,7 @@ def simulate(params, capex_pm_df=None):
         # Add capex and maintenance if data is available from capex_pm simulation
         capex_cost = 0.0
         pm_cost = 0.0
-        if capex_pm_df is not None and not capex_pm_df.empty:
+        if active_months > 0 and capex_pm_df is not None and not capex_pm_df.empty:
             match_row = capex_pm_df[capex_pm_df["Fiscal Year"] == (params["Agreement Start Date"].year + yr - 1)]
             if not match_row.empty:
                 capex_cost = match_row.iloc[0]["Capex Injected"]

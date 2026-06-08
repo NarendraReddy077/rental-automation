@@ -50,11 +50,16 @@ def inject(ws, params):
         
         # Beyond the lease term, set rates to 0.0
         if m > term_months:
-            ws.cell(row=r, column=8, value=0.0)   # Column H: Rental rate
-            ws.cell(row=r, column=10, value=0.0)  # Column J: CAM rate
-            # Area SQF and SQM should copy down
-            ws.cell(row=r, column=5, value=f"=E{r-1}")
-            ws.cell(row=r, column=6, value=f"=F{r-1}")
+            ws.cell(row=r, column=1, value="")   # Column A: Year
+            ws.cell(row=r, column=2, value="")   # Column B: From Date
+            ws.cell(row=r, column=3, value="")   # Column C: To Date
+            ws.cell(row=r, column=4, value="")   # Column D: Months
+            ws.cell(row=r, column=5, value="")   # Column E: Area SQF
+            ws.cell(row=r, column=6, value="")   # Column F: Area SQM
+            ws.cell(row=r, column=7, value="")   # Column G: Escalation
+            ws.cell(row=r, column=8, value=0.0)  # Column H: Rental rate
+            ws.cell(row=r, column=9, value="")   # Column I: Car Parks
+            ws.cell(row=r, column=10, value=0.0) # Column J: CAM rate
             continue
             
         # Write Area columns
