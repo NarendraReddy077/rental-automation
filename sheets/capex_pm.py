@@ -169,7 +169,8 @@ def inject(ws, params):
         ws.cell(row=r_per_sqft, column=c, value=f"=SUM({col_char}{r_imp_int}:{col_char}{r_used_dep})")
         
     ws.cell(row=r_per_sqmtr, column=4, value="Monthly Value ")
-    ws.cell(row=r_per_sqmtr, column=5, value=f"=IFERROR(SUM(F{r_imp_int}:O{r_imp_int}+F{r_used_dep}:O{r_used_dep})/E3,0)")
+    ws.cell(row=r_per_sqmtr, column=5, value=f"=IFERROR(SUM(F{r_imp_int}:O{r_imp_int},F{r_used_dep}:O{r_used_dep})/E3,0)")
+
 
     # ---------------- CAPEX SECTION ----------------
     r_capex_header = 36 + offset
