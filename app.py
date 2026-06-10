@@ -535,6 +535,12 @@ total_fitout = ui_params["Fitout Cost"]
 total_capex = sum(ui_params["Capex Schedule"].values())
 total_pm = ui_params["PM Cost Over Lease"]
 
+net_rent_1 = rent_calc_results["Net Rent I (Standard)"]
+net_rent_2 = rent_calc_results["Net Rent II (Refinancing)"]
+opex_1 = rent_calc_results["Opex Others Per Month"]
+opex_2 = rent_calc_results["Opex II Per Month"]
+total_occupancy_cost = rent_calc_results["Total Occupancy Cost"]
+
 metrics_html = f"""
 <div class="stats-grid">
     <div class="stat-cell">
@@ -572,8 +578,31 @@ metrics_html = f"""
         <span class="stat-value">€ {npv_value:,.2f} M</span>
         <span class="stat-meta">WACC: {ui_params['Cost of Capital']*100:.2f}% | Forex: {ui_params['Exchange Rate']:.2f}</span>
     </div>
+    <div class="stat-cell">
+        <span class="stat-label">Total Occupancy Cost</span>
+        <span class="stat-value">{ui_params['Currency']} {total_occupancy_cost:,.2f}</span>
+        <div class="stat-sub-grid">
+            <div class="stat-sub-item">
+                <span class="stat-sub-label">Net Rent 1</span>
+                <span class="stat-sub-value">{net_rent_1:,.2f}</span>
+            </div>
+            <div class="stat-sub-item">
+                <span class="stat-sub-label">Net Rent 2</span>
+                <span class="stat-sub-value">{net_rent_2:,.2f}</span>
+            </div>
+            <div class="stat-sub-item">
+                <span class="stat-sub-label">Opex 1</span>
+                <span class="stat-sub-value">{opex_1:,.2f}</span>
+            </div>
+            <div class="stat-sub-item">
+                <span class="stat-sub-label">Opex 2</span>
+                <span class="stat-sub-value">{opex_2:,.2f}</span>
+            </div>
+        </div>
+    </div>
 </div>
 """
+
 st.markdown(metrics_html, unsafe_allow_html=True)
 
 

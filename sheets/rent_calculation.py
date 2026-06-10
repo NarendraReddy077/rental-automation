@@ -135,6 +135,7 @@ def simulate(params):
     net_rent_2 = eff_fitouts + eff_capex + eff_pm_amort + eff_aro
     
     total_net_rent = net_rent_1 + net_rent_2
+    total_occupancy = net_rent_1 + net_rent_2 + opex_others + opex_ii
     
     return {
         "Base Rental Rate (sqft/mo)": rent_rate,
@@ -148,5 +149,7 @@ def simulate(params):
         "Estimated Stamp Duty & Registration Amount": round(total_stamp_duty, 2),
         "Opex Others Per Month": opex_others,
         "Opex II Per Month": opex_ii,
-        "Total OpEx Per Month": round(total_opex, 2)
+        "Total OpEx Per Month": round(total_opex, 2),
+        "Total Occupancy Cost": round(total_occupancy, 2)
     }
+
