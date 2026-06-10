@@ -439,9 +439,8 @@ with st.sidebar.expander("▶ CAPEX & PM Schedule"):
 
 # Expander 3: Financial Rates & ARO Restoration
 with st.sidebar.expander("▶ Rates & ARO Restoration"):
-    wacc = st.slider("Cost of Capital (WACC) %", min_value=0.0, max_value=0.25, value=float(params["Cost of Capital"]), key=f"wacc{key_suffix}", step=0.005, help="Weighted Average Cost of Capital used for investment analysis and discounting cash flows.")
-    borrow_rate = st.slider("Incremental Borrowing Rate %", min_value=0.0, max_value=0.25, value=float(params["Incremental Borrowing Rate"]), key=f"borrow_rate{key_suffix}", step=0.005, help="Incremental Borrowing Rate (IBR) used to calculate the lease liability.")
-    imputed_rate = st.slider("Imputed Interest Rate %", min_value=0.0, max_value=0.20, value=float(params["Imputed Interest Rate"]), key=f"imputed_rate{key_suffix}", step=0.001, help="The implicit rate of interest in the lease, or estimated discount rate.")
+    wacc = st.number_input("Cost of Capital (WACC) %", value=float(params["Cost of Capital"]), format="%.4f", step=0.001, key=f"wacc{key_suffix}", help="Weighted Average Cost of Capital used for investment analysis and discounting cash flows.")
+    imputed_rate = st.number_input("Imputed Interest Rate %", value=float(params["Imputed Interest Rate"]), format="%.4f", step=0.001, key=f"imputed_rate{key_suffix}", help="The implicit rate of interest in the lease, or estimated discount rate.")
     aro_rate = st.number_input("Restoration Cost per Sq ft (ARO)", value=float(params["Incremental Restoration Cost Sqft"]), key=f"aro_rate{key_suffix}", step=5.0, help="Estimated asset restoration cost per square foot at lease end (Asset Retirement Obligation).")
     exchange_rate = st.number_input("Forex Rate (INR/Euro)", value=float(params["Exchange Rate"]), key=f"exchange_rate{key_suffix}", step=0.1, help="The foreign currency exchange rate (INR per 1 Euro) for reporting.")
 
@@ -481,8 +480,8 @@ ui_params = {
     "PM Schedule": pm_schedule,
     
     "Cost of Capital": float(wacc),
-    "Discount Rate": float(borrow_rate),
-    "Incremental Borrowing Rate": float(borrow_rate),
+    "Discount Rate": float(params.get("Discount Rate", params.get("Incremental Borrowing Rate", 0.08))),
+    "Incremental Borrowing Rate": float(params.get("Incremental Borrowing Rate", params.get("Discount Rate", 0.08))),
     "Imputed Interest Rate": float(imputed_rate),
     "Ready Reckoner Rate": float(params.get("Ready Reckoner Rate", 15000.0)),
     "Exchange Rate": float(exchange_rate),
