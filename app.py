@@ -567,6 +567,11 @@ metrics_html = f"""
         <span class="stat-value">{ui_params['Currency']} {total_pm/1000000:,.2f} M</span>
         <span class="stat-meta">{len(ui_params['PM Schedule'])} Years Scheduled</span>
     </div>
+    <div class="stat-cell">
+        <span class="stat-label">Project NPV</span>
+        <span class="stat-value">€ {npv_value:,.2f} M</span>
+        <span class="stat-meta">WACC: {ui_params['Cost of Capital']*100:.2f}% | Forex: {ui_params['Exchange Rate']:.2f}</span>
+    </div>
 </div>
 """
 st.markdown(metrics_html, unsafe_allow_html=True)

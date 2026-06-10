@@ -118,14 +118,14 @@ def parse_input_xlsx(file_bytes):
         # Normalize values
         params = {}
         params["Lease ID"] = get_str("Lease ID", ["LeaseID", "Lease_ID"], "LEASE-001")
-        params["REU Name"] = get_str("REU Name", ["REUName", "REU_Name"], "IN-CHEK2")
+        params["REU Name"] = get_str("REU Name", ["REUName", "REU_Name", "REU"], "IN-CHEK2")
         params["Lease Type"] = get_str("Lease Type", ["LeaseType", "Lease_Type"], "Office")
         params["Building Name"] = get_str("Building Name", ["BuildingName", "Building_Name"], "SKCL Tech Park")
         params["City"] = get_str("City", [], "Chennai")
         params["Country"] = get_str("Country", [], "India")
         params["Currency"] = get_str("Currency", [], "INR")
         
-        params["Chargeable Area Sqft"] = get_float("Chargeable Area Sqft", ["Chargeable Area Sq.ft.", "Chargeable Area Sq.ft", "Chargeable Area (Sqft)", "Chargeable Area", "Area Sqft", "Area"], 9515.0)
+        params["Chargeable Area Sqft"] = get_float("Chargeable Area Sqft", ["Chargeable Area Sq.ft.", "Chargeable Area Sq.ft", "Chargeable Area (Sqft)", "Chargeable Area", "Area Sqft", "Area", "Chargeable Office Area"], 9515.0)
         params["Parking Slots"] = get_int("Parking Slots", ["ParkingSlots", "Parking Slots Count"], 20)
         params["4 Wheeler Slots"] = get_int("4 Wheeler Slots", ["No. of 4 wheelers", "4-wheeler slots", "4 Wheeler Parking Slots", "No of 4 wheelers"], 80)
         params["4 Wheeler Rate"] = get_float("4 Wheeler Rate", ["Rate per 4 wheeler", "4-wheeler rate", "4 Wheeler Parking Rate"], 1500.0)
@@ -156,7 +156,7 @@ def parse_input_xlsx(file_bytes):
                 term_months = round((end_date - start_date).days / 30.4167)
         params["Lease Term Months"] = term_months
         
-        params["Rent Per Sqft"] = get_float("Rent Per Sqft", ["Rent Per Sq.ft.", "Rent per Sqft", "Rent Per Sqft/month", "Base Rent"], 120.0)
+        params["Rent Per Sqft"] = get_float("Rent Per Sqft", ["Rent Per Sq.ft.", "Rent per Sqft", "Rent Per Sqft/month", "Base Rent", "Quoted Rentals", "Quoted Rentals "], 120.0)
         params["Quoted CAM"] = get_float("Quoted CAM", ["CAM", "CAM Per Sqft", "Quoted CAM (per sq ft/month)", "CAM per Sq ft", "CAM per Sq.ft.", "CAM per Sqft", "CAM Rate"], 15.48)
         
         esc_val = get_value_by_aliases(["Escalation %", "Rent Escalation %", "Escalation Percentage", "Rent Escalation Pct"])
@@ -221,7 +221,7 @@ def parse_input_xlsx(file_bytes):
         params["Refundable Deposit"] = get_str("Refundable Deposit", ["Refundable"], "Yes")
         
         # Capex & Cost factors
-        total_fitout = get_float("Fitout Cost", ["Total Fitout Cost", "Fitout Cost Amount", "Fitouts"], 34000000.0)
+        total_fitout = get_float("Fitout Cost", ["Total Fitout Cost", "Fitout Cost Amount", "Fitouts", "Capex"], 34000000.0)
         params["Fitout Cost"] = total_fitout
         params["Useful Life Years"] = get_float("Useful Life Years", ["Useful Life", "Useful Life (Years)"], 5.0)
         params["Residual Value"] = get_float("Residual Value", ["ResidualValue"], 0.0)
@@ -239,9 +239,9 @@ def parse_input_xlsx(file_bytes):
         # OpEx I and OpEx II parameters
         params["Opex Others Per Month"] = get_float("Opex Others Per Month", ["Opex Others", "OpEx Others Rs../ month (At Actuals)", "Opex Others Rs./ month", "Opex Others Rs/ month", "Opex I"], 654.0)
         params["Opex II Per Month"] = get_float("Opex II Per Month", ["Opex II", "OpEx II Rs../ month", "Opex II Rs./ month", "Opex II Rs/ month", "Opex II - OpEx Add-on"], 0.0)
-
+ 
         
-        total_pm = get_float("PM Cost Over Lease", ["Preventive Maintenance Cost", "PM Cost", "Maintenance Cost over Lease"], 2500000.0)
+        total_pm = get_float("PM Cost Over Lease", ["Preventive Maintenance Cost", "PM Cost", "Maintenance Cost over Lease", "PM cost Over lease period", "PM cost Over lease"], 2500000.0)
         params["PM Cost Over Lease"] = total_pm
 
         # Try to parse dynamic schedules from CAPEX and PM sheet if it exists
@@ -278,6 +278,14 @@ def parse_input_xlsx(file_bytes):
                 if val_d23 is not None:
                     try:
                         params["2 Wheeler Slots"] = int(float(val_d23))
+                    except Exception:
+                        pass
+            if "Rent Calculation" in wb.sheetnames:
+                ws_rc = wb["Rent Calculation"]
+                val_j5 = ws_rc["J5"].value
+                if val_j5 is not None:
+                    try:
+                        params["Exchange Rate"] = float(val_j5)
                     except Exception:
                         pass
             if "CAPEX and PM" in wb.sheetnames:
