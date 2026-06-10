@@ -40,8 +40,10 @@ def simulate(params):
     carrying_cost_rate_sqft = total_carrying_cost / (area_sqft * term_months)
     
     # ARO (Asset Retirement Obligation) calculations
-    aro_rate = params.get("Incremental Restoration Cost Sqft", 82.6)
-    if aro_rate == 82.6 and area_sqft >= 50000:
+    aro_rate = params.get("Incremental Restoration Cost Sqft")
+    if aro_rate is None:
+        aro_rate = 0.0
+    elif aro_rate == 82.6 and area_sqft >= 50000:
         aro_rate = 62.72
         
     total_aro_cost = area_sqft * aro_rate

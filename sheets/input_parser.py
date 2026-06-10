@@ -234,7 +234,7 @@ def parse_input_xlsx(file_bytes):
         params["Imputed Interest Rate"] = get_float("Imputed Interest Rate", ["Imputed Interest Rate %", "Imputed Interest", "Imputed Rate"], 0.0711)
         params["Ready Reckoner Rate"] = get_float("Ready Reckoner Rate", ["Ready Reckoner Rate (INR/sq m)", "Ready Reckoner"], 15000.0)
         params["Exchange Rate"] = get_float("Exchange Rate", ["Forex Rate", "Exchange Rate (INR/Euro)", "Forex"], 105.02)
-        params["Incremental Restoration Cost Sqft"] = get_float("Incremental Restoration Cost Sqft", ["Restoration Cost per Sq ft (ARO)", "Restoration Cost per Sqft", "ARO Rate", "ARO Cost per Sqft"], 82.6)
+        params["Incremental Restoration Cost Sqft"] = get_float("Incremental Restoration Cost Sqft", ["Restoration Cost per Sq ft (ARO)", "Restoration Cost per Sqft", "ARO Rate", "ARO Cost per Sqft"], None)
         
         # OpEx I and OpEx II parameters
         params["Opex Others Per Month"] = get_float("Opex Others Per Month", ["Opex Others", "OpEx Others Rs../ month (At Actuals)", "Opex Others Rs./ month", "Opex Others Rs/ month", "Opex I"], 654.0)

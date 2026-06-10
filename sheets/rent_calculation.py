@@ -79,8 +79,10 @@ def simulate(params):
     carrying_cost_per_sqft = carrying_interest / (area_sqft * term_months)
     
     # ARO Cost
-    aro_rate = params.get("Incremental Restoration Cost Sqft", 82.6)
-    if aro_rate == 82.6 and area_sqft >= 50000:
+    aro_rate = params.get("Incremental Restoration Cost Sqft")
+    if aro_rate is None:
+        aro_rate = 0.0
+    elif aro_rate == 82.6 and area_sqft >= 50000:
         aro_rate = 62.72
     aro_cost_sqft_mo = (area_sqft * aro_rate / term_months) / area_sqft
     

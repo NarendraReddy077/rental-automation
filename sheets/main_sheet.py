@@ -72,5 +72,5 @@ def simulate(params):
              f"{int(params['CAM Escalation %']*100)}% every {params.get('CAM Escalation Frequency Months', 12)} months")
         ),
         "Energy Deposit": f"{params['Currency']} {params['Addnl.Deposit -energy(Refundable)']:,.2f}",
-        "Incremental Restoration Cost / sqft": f"{params['Currency']} {params['Incremental Restoration Cost Sqft']:.2f}"
+        "Incremental Restoration Cost / sqft": f"{params['Currency']} {params['Incremental Restoration Cost Sqft']:.2f}" if params.get("Incremental Restoration Cost Sqft") is not None else ""
     }
