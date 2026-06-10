@@ -491,8 +491,7 @@ with st.sidebar.expander("▶ Rates & ARO Restoration"):
     imputed_pct = float(imputed_val * 100) if imputed_val is not None else None
     imputed_rate = st.number_input("Imputed Interest Rate %", value=imputed_pct, format="%.2f", step=0.01, key=f"imputed_rate{key_suffix}", help="The implicit rate of interest in the lease, or estimated discount rate.")
     
-    aro_rate = st.number_input("Restoration Cost per Sq ft (ARO)", value=float(params["Incremental Restoration Cost Sqft"]) if params["Incremental Restoration Cost Sqft"] is not None else None, key=f"aro_rate{key_suffix}", step=5.0, help="Estimated asset restoration cost per square foot at lease end (Asset Retirement Obligation).")
-    exchange_rate = st.number_input("Forex Rate (INR/Euro)", value=float(params["Exchange Rate"]) if params["Exchange Rate"] is not None else None, key=f"exchange_rate{key_suffix}", step=0.1, help="The foreign currency exchange rate (INR per 1 Euro) for reporting.")
+    exchange_rate = st.number_input("Forex Rate (LC/Euro)", value=float(params["Exchange Rate"]) if params["Exchange Rate"] is not None else None, key=f"exchange_rate{key_suffix}", step=0.1, help="The foreign currency exchange rate (INR per 1 Euro) for reporting.")
 
 # Pack overrides into active UI parameters
 ui_params = {
@@ -535,7 +534,7 @@ ui_params = {
     "Imputed Interest Rate": (float(imputed_rate) / 100.0) if imputed_rate is not None else None,
     "Ready Reckoner Rate": float(params.get("Ready Reckoner Rate", 15000.0)) if params.get("Ready Reckoner Rate") is not None else 15000.0,
     "Exchange Rate": float(exchange_rate) if exchange_rate is not None else None,
-    "Incremental Restoration Cost Sqft": float(aro_rate) if aro_rate is not None else None,
+    "Incremental Restoration Cost Sqft": float(params["Incremental Restoration Cost Sqft"]) if params.get("Incremental Restoration Cost Sqft") is not None else None,
     "Opex Others Per Month": float(opex_others) if opex_others is not None else 0.0,
     "Opex II Per Month": float(opex_ii) if opex_ii is not None else 0.0,
     "Lease Term Months": round((end_date - start_date).days / 30.4167) if (start_date and end_date) else 0
