@@ -8,19 +8,22 @@ def inject(ws, params):
     ws["J5"] = params.get("Exchange Rate", 105.02)
     ws["F10"] = params.get("City", "Chennai")
     ws["F17"] = params.get("Lease Type", "Warm Shell")
-    ws["F27"] = params.get("Amortization Period Months", 72)
+    ws["F27"] = "='CAPEX and PM'!E3"
     ws["F33"] = params.get("Security Deposit Months", 10)
-    ws["F118"] = params.get("Opex Others Per Month", 654.0)
+    ws["F117"] = params.get("Opex Others Per Month", 654.0)
+    ws["F118"] = "=F117*7%"
+    ws["F122"] = params.get("Opex II Per Month", 0.0)
+    ws["G122"] = "=F122"
     
     # Link parking counts and rates dynamically to the Lease Rent sheet input table
-    ws["F44"] = "='Lease Rent'!D22"
-    ws["F45"] = "='Lease Rent'!C22"
-    ws["F47"] = "='Lease Rent'!D23"
-    ws["F48"] = "='Lease Rent'!C23"
+    ws["F43"] = "='Lease Rent'!D22"
+    ws["F44"] = "='Lease Rent'!C22"
+    ws["F46"] = "='Lease Rent'!D23"
+    ws["F47"] = "='Lease Rent'!C23"
 
     # Link expected date of Agreement to close to the correct dynamic Lease Rent cell
     term_months = params.get("Lease Term Months", 72)
-    ws["F52"] = f"='Lease Rent'!C{30 + term_months}"
+    ws["F51"] = f"='Lease Rent'!C{30 + term_months}"
 
     # Disable Outline Level selectors / group symbols in the sheet
     if hasattr(ws, 'sheet_properties') and ws.sheet_properties:
@@ -60,7 +63,8 @@ def simulate(params):
     # OPEX computations
     opex_others = params.get("Opex Others Per Month", 654.0)
     opex_mgmt_fee = opex_others * 0.07
-    total_opex = opex_others + opex_mgmt_fee
+    opex_ii = params.get("Opex II Per Month", 0.0)
+    total_opex = opex_others + opex_mgmt_fee + opex_ii
     
     # Carrying costs (Simulated using Security Deposit carrying cost)
     term_months = params.get("Lease Term Months", 72)
@@ -143,5 +147,6 @@ def simulate(params):
         "Total Net Rental Rate (sqft/mo)": round(total_net_rent, 2),
         "Estimated Stamp Duty & Registration Amount": round(total_stamp_duty, 2),
         "Opex Others Per Month": opex_others,
+        "Opex II Per Month": opex_ii,
         "Total OpEx Per Month": round(total_opex, 2)
     }

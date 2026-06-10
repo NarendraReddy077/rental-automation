@@ -188,9 +188,9 @@ def inject(ws, params):
     if "Rent Calculation" in wb.sheetnames:
         rc_ws = wb["Rent Calculation"]
         
-        # Years 1 to 10 correspond to Rent Calculation rows 211 to 220
+        # Years 1 to 10 correspond to Rent Calculation rows 210 to 219
         for y in range(1, 11):
-            r_rc = 210 + y
+            r_rc = 209 + y
             if y in summary_rows:
                 sum_row = summary_rows[y]
                 rc_ws.cell(row=r_rc, column=3, value=f"='Lease Rent'!N{sum_row}") # Column C: Rent (INR)

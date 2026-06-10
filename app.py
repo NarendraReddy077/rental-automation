@@ -5,14 +5,28 @@ import datetime
 import os
 import io
 
+import importlib
+
 import sheets.main_sheet as main_sheet
 import sheets.rent_calculation as rent_calculation
 import sheets.lease_size as lease_size
 import sheets.lease_rent as lease_rent
 import sheets.capex_pm as capex_pm
 import sheets.security_deposit as security_deposit
+import sheets.input_parser as input_parser
+
+# Force reload sub-modules in Streamlit to ensure edits are picked up immediately
+importlib.reload(main_sheet)
+importlib.reload(rent_calculation)
+importlib.reload(lease_size)
+importlib.reload(lease_rent)
+importlib.reload(capex_pm)
+importlib.reload(security_deposit)
+importlib.reload(input_parser)
+
 from sheets.capex_pm import calculate_fy_months
 from sheets.input_parser import parse_input_xlsx
+
 
 st.set_page_config(
     page_title="Siemens - Rental Automation System",
@@ -218,6 +232,8 @@ default_params = {
     "Ready Reckoner Rate": 15000.0,
     "Exchange Rate": 105.02,
     "Incremental Restoration Cost Sqft": 82.6,
+    "Opex Others Per Month": 654.0,
+    "Opex II Per Month": 0.0,
     "Lease Term Months": 60
 }
 
@@ -295,6 +311,11 @@ with st.sidebar.expander("▶ Parking Configuration"):
         parking_esc = st.slider("Parking Escalation %", min_value=0.0, max_value=0.5, value=float(params.get("Parking Escalation %", params.get("Escalation %", 0.15))), key=f"parking_esc{key_suffix}", step=0.01, help="The parking rate escalation percentage.")
     with col_p6:
         parking_esc_freq = st.number_input("Parking Escalation Freq (Months)", value=int(params.get("Parking Escalation Frequency Months", params.get("Escalation Frequency Months", 36))), key=f"parking_esc_freq{key_suffix}", step=1, help="Interval in months between parking rate escalations.")
+
+# Expander 1.6: OpEx Configuration
+with st.sidebar.expander("▶ OpEx Configuration"):
+    opex_others = st.number_input("Opex I (Others per month)", value=float(params.get("Opex Others Per Month", 654.0)), key=f"opex_others{key_suffix}", step=10.0, help="Opex Others monthly amount.")
+    opex_ii = st.number_input("Opex II (per month)", value=float(params.get("Opex II Per Month", 0.0)), key=f"opex_ii{key_suffix}", step=10.0, help="Opex II monthly amount (OpEx Add-on).")
 
 # Expander 2: CAPEX & PM Investment Schedule
 with st.sidebar.expander("▶ CAPEX & PM Schedule"):
@@ -416,12 +437,11 @@ with st.sidebar.expander("▶ CAPEX & PM Schedule"):
     pm_cost_total = sum(pm_schedule.values())
     st.info(f"Total PM Cost: {params['Currency']} {pm_cost_total:,.2f}")
 
-# Expander 3: Financial Rates & ARO Workings
+# Expander 3: Financial Rates & ARO Restoration
 with st.sidebar.expander("▶ Rates & ARO Restoration"):
     wacc = st.slider("Cost of Capital (WACC) %", min_value=0.0, max_value=0.25, value=float(params["Cost of Capital"]), key=f"wacc{key_suffix}", step=0.005, help="Weighted Average Cost of Capital used for investment analysis and discounting cash flows.")
     borrow_rate = st.slider("Incremental Borrowing Rate %", min_value=0.0, max_value=0.25, value=float(params["Incremental Borrowing Rate"]), key=f"borrow_rate{key_suffix}", step=0.005, help="Incremental Borrowing Rate (IBR) used to calculate the lease liability.")
     imputed_rate = st.slider("Imputed Interest Rate %", min_value=0.0, max_value=0.20, value=float(params["Imputed Interest Rate"]), key=f"imputed_rate{key_suffix}", step=0.001, help="The implicit rate of interest in the lease, or estimated discount rate.")
-    reckoner_rate = st.number_input("Ready Reckoner Rate (INR/sq m)", value=float(params["Ready Reckoner Rate"]), key=f"reckoner_rate{key_suffix}", step=1000.0, help="Government-determined Ready Reckoner Rate used for stamp duty / valuation.")
     aro_rate = st.number_input("Restoration Cost per Sq ft (ARO)", value=float(params["Incremental Restoration Cost Sqft"]), key=f"aro_rate{key_suffix}", step=5.0, help="Estimated asset restoration cost per square foot at lease end (Asset Retirement Obligation).")
     exchange_rate = st.number_input("Forex Rate (INR/Euro)", value=float(params["Exchange Rate"]), key=f"exchange_rate{key_suffix}", step=0.1, help="The foreign currency exchange rate (INR per 1 Euro) for reporting.")
 
@@ -464,9 +484,11 @@ ui_params = {
     "Discount Rate": float(borrow_rate),
     "Incremental Borrowing Rate": float(borrow_rate),
     "Imputed Interest Rate": float(imputed_rate),
-    "Ready Reckoner Rate": float(reckoner_rate),
+    "Ready Reckoner Rate": float(params.get("Ready Reckoner Rate", 15000.0)),
     "Exchange Rate": float(exchange_rate),
     "Incremental Restoration Cost Sqft": float(aro_rate),
+    "Opex Others Per Month": float(opex_others),
+    "Opex II Per Month": float(opex_ii),
     "Lease Term Months": round((end_date - start_date).days / 30.4167)
 }
 

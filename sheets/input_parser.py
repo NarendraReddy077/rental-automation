@@ -236,6 +236,11 @@ def parse_input_xlsx(file_bytes):
         params["Exchange Rate"] = get_float("Exchange Rate", ["Forex Rate", "Exchange Rate (INR/Euro)", "Forex"], 105.02)
         params["Incremental Restoration Cost Sqft"] = get_float("Incremental Restoration Cost Sqft", ["Restoration Cost per Sq ft (ARO)", "Restoration Cost per Sqft", "ARO Rate", "ARO Cost per Sqft"], 82.6)
         
+        # OpEx I and OpEx II parameters
+        params["Opex Others Per Month"] = get_float("Opex Others Per Month", ["Opex Others", "OpEx Others Rs../ month (At Actuals)", "Opex Others Rs./ month", "Opex Others Rs/ month", "Opex I"], 654.0)
+        params["Opex II Per Month"] = get_float("Opex II Per Month", ["Opex II", "OpEx II Rs../ month", "Opex II Rs./ month", "Opex II Rs/ month", "Opex II - OpEx Add-on"], 0.0)
+
+        
         total_pm = get_float("PM Cost Over Lease", ["Preventive Maintenance Cost", "PM Cost", "Maintenance Cost over Lease"], 2500000.0)
         params["PM Cost Over Lease"] = total_pm
 
