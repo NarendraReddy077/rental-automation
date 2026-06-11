@@ -119,9 +119,13 @@ def simulate(params, capex_pm_df=None):
         if 0 <= y_idx < 10:
             years_pm[y_idx] = val
             
+    # CAM Security Deposit: Month 1 CAM rate * Area * Security Deposit Months
+    sd_months = params.get("Security Deposit Months", 6.0) or 6.0
+    cam_sd_amount = cam_rate * area_sqft * sd_months
+
     # Security deposit flows (Year 1 outflow, Year 7 refund)
     years_sd = [0.0] * 10
-    sd_flow = sd_amount + energy_deposit + energy_deposit  # Energy deposit is added twice in formula
+    sd_flow = sd_amount + cam_sd_amount + energy_deposit + energy_deposit  # Energy deposit is added twice in formula
     years_sd[0] = sd_flow
     years_sd[6] = -sd_flow
     

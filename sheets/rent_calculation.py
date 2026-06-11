@@ -10,6 +10,7 @@ def inject(ws, params):
     ws["F17"] = params.get("Lease Type", "Warm Shell")
     ws["F27"] = "='CAPEX and PM'!E3"
     ws["F33"] = params.get("Security Deposit Months", 10)
+    ws["F69"] = params.get("Addnl.Deposit -energy(Refundable)", 0.0)
     ws["F117"] = params.get("Opex Others Per Month", 654.0)
     ws["F118"] = "=F117*7%"
     ws["F122"] = params.get("Opex II Per Month", 0.0)
