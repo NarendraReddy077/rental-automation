@@ -132,11 +132,18 @@ def render_sidebar():
         for i in range(num_fitouts):
             col1, col2 = st.columns(2)
             default_c = fitout_breakdown[i] if i < len(fitout_breakdown) else None
-            default_l = fitout_lifes[i] if i < len(fitout_lifes) else None
+            
+            if i == 0:
+                default_l = term_months
+                life_key = f"fitout_life_{i}_{term_months}{key_suffix}"
+            else:
+                default_l = fitout_lifes[i] if i < len(fitout_lifes) else None
+                life_key = f"fitout_life_{i}{key_suffix}"
+                
             with col1:
                 c = st.number_input(f"Fitout Phase {i+1} Cost", value=int(default_c) if default_c is not None else None, key=f"fitout_cost_{i}{key_suffix}", step=100000, help=f"Capital expenditure for phase {i+1} of fitout works.")
             with col2:
-                l = st.number_input(f"Phase {i+1} Useful Life (mo)", value=int(default_l) if default_l is not None else None, key=f"fitout_life_{i}{key_suffix}", step=6, help=f"Amortization period for phase {i+1} in months.")
+                l = st.number_input(f"Phase {i+1} Useful Life (mo)", value=int(default_l) if default_l is not None else None, key=life_key, step=6, help=f"Amortization period for phase {i+1} in months.")
                 
             fitout_costs.append(float(c) if c is not None else 0.0)
             fitout_useful_lives.append(int(l) if l is not None else 0)
@@ -146,10 +153,29 @@ def render_sidebar():
                 default_m_dist = calculate_fy_months(start_date, term_months, int(l)) if (start_date and term_months and l is not None) else {}
                 phase_m_dict = parsed_active_months_list[i] if i < len(parsed_active_months_list) else {}
                 
+                # Check if the user has overridden spreadsheet defaults for useful life or dates
+                is_override = (
+                    (default_l is not None and l != default_l) or
+                    (start_date != params.get("Agreement Start Date")) or
+                    (end_date != params.get("Agreement End Date"))
+                )
+                
                 phase_m_custom = {}
                 for yr in lease_years:
-                    default_m = phase_m_dict.get(yr, default_m_dist.get(yr, 0))
-                    m = st.number_input(f"FY{yr} Active Months", min_value=0, max_value=12, value=int(default_m), key=f"fitout_{i}_m_{yr}{key_suffix}")
+                    if is_override:
+                        default_m = default_m_dist.get(yr, 0)
+                    else:
+                        default_m = phase_m_dict.get(yr, default_m_dist.get(yr, 0))
+                        
+                    # Include l, start_date, and term_months in the key to recreate the widget when dependencies are altered
+                    key = f"fitout_{i}_m_{yr}_{l}_{start_date}_{term_months}{key_suffix}"
+                    m = st.number_input(
+                        f"FY{yr} Active Months",
+                        min_value=0,
+                        max_value=12,
+                        value=int(default_m),
+                        key=key
+                    )
                     phase_m_custom[yr] = int(m)
                 fitout_active_months_breakdown.append(phase_m_custom)
             
