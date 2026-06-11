@@ -46,22 +46,22 @@ def render_dashboard(ui_params, upload_occurred, parse_error_msg):
         total_pm = ui_params["PM Cost Over Lease"]
         
         net_rent_1 = rent_calc_results["Net Rent I (Standard)"]
+        net_rent_1_mtr = net_rent_1*10.764
         net_rent_2 = rent_calc_results["Net Rent II (Refinancing)"]
+        net_rent_2_mtr = net_rent_2*10.764
         opex_1 = rent_calc_results["Opex Others Per Month"]
+        opex_1_mtr = opex_1*10.764
         opex_2 = rent_calc_results["Opex II Per Month"]
+        opex_2_mtr = opex_2*10.764
         total_occupancy_cost = rent_calc_results["Total Occupancy Cost"]
+        total_occupancy_cost_mtr = total_occupancy_cost*10.764
         
         metrics_html = f"""
         <div class="stats-grid">
             <div class="stat-cell">
                 <span class="stat-label">Chargeable Area</span>
-                <span class="stat-value">{int(ui_params['Chargeable Area Sqft']):,} sqft</span>
-                <span class="stat-meta">≈ {ui_params['Chargeable Area Sqft']/10.764:,.2f} sq.m.</span>
-            </div>
-            <div class="stat-cell">
-                <span class="stat-label">Initial Rent + CAM Rate</span>
-                <span class="stat-value">{ui_params['Currency']} {total_rent_cam:.2f}</span>
-                <span class="stat-meta">Rent: {ui_params['Rent Per Sqft']:.1f} | CAM: {ui_params['Quoted CAM']:.2f}</span>
+                <span class="stat-value">{ui_params['Chargeable Area Sqft']/10.764:,.2f} sq.m.</span>
+                <span class="stat-meta">{int(ui_params['Chargeable Area Sqft']):,} sqft</span>
             </div>
             <div class="stat-cell">
                 <span class="stat-label">Lease Duration</span>
@@ -90,23 +90,23 @@ def render_dashboard(ui_params, upload_occurred, parse_error_msg):
             </div>
             <div class="stat-cell">
                 <span class="stat-label">Total Occupancy Cost</span>
-                <span class="stat-value">{ui_params['Currency']} {total_occupancy_cost:,.2f}</span>
+                <span class="stat-value">{ui_params['Currency']} {total_occupancy_cost_mtr:,.2f}</span>
                 <div class="stat-sub-grid">
                     <div class="stat-sub-item">
                         <span class="stat-sub-label">Net Rent 1</span>
-                        <span class="stat-sub-value">{net_rent_1:,.2f}</span>
+                        <span class="stat-sub-value">{net_rent_1_mtr:,.2f}</span>
                     </div>
                     <div class="stat-sub-item">
                         <span class="stat-sub-label">Net Rent 2</span>
-                        <span class="stat-sub-value">{net_rent_2:,.2f}</span>
+                        <span class="stat-sub-value">{net_rent_2_mtr:,.2f}</span>
                     </div>
                     <div class="stat-sub-item">
                         <span class="stat-sub-label">Opex 1</span>
-                        <span class="stat-sub-value">{opex_1:,.2f}</span>
+                        <span class="stat-sub-value">{opex_1_mtr:,.2f}</span>
                     </div>
                     <div class="stat-sub-item">
                         <span class="stat-sub-label">Opex 2</span>
-                        <span class="stat-sub-value">{opex_2:,.2f}</span>
+                        <span class="stat-sub-value">{opex_2_mtr:,.2f}</span>
                     </div>
                 </div>
             </div>
