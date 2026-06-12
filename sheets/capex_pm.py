@@ -323,7 +323,7 @@ def simulate(params):
             life_k = fitout_lifes[k]
             # Use custom months if present, otherwise default distribute
             phase_m = fitout_active_months[k] if k < len(fitout_active_months) else {}
-            m_k = phase_m.get(yr, calculate_fy_months(start_date, term_months, life_k).get(yr, 0))
+            m_k = phase_m.get(yr, calculate_fy_months(start_date, max(term_months, 120), life_k).get(yr, 0))
             if k == 0:
                 active_f_months = m_k  # use first phase active months for imputed interest active term reference
             dep_k = (cost_k / (life_k / 12) / 12) * m_k if m_k > 0 and life_k > 0 else 0.0

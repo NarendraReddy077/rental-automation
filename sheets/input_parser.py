@@ -463,7 +463,7 @@ def parse_input_xlsx(file_bytes):
             fitout_active_months_breakdown = []
             for life in fitout_lifes:
                 fitout_active_months_breakdown.append(
-                    calculate_fy_months(start_date, term_months, life)
+                    calculate_fy_months(start_date, max(term_months, 120), life)
                 )
 
         # Capex schedule fallback

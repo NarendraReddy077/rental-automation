@@ -63,11 +63,11 @@ def simulate(params, capex_pm_df=None):
     
     for m in range(1, term_months + 1):
         if m > 1:
-            if (m - 1) % rent_esc_freq == 0:
+            if rent_esc_freq and rent_esc_freq > 0 and (m - 1) % rent_esc_freq == 0:
                 current_rent *= (1.0 + rent_esc_pct)
-            if (m - 1) % cam_esc_freq == 0:
+            if cam_esc_freq and cam_esc_freq > 0 and (m - 1) % cam_esc_freq == 0:
                 current_cam *= (1.0 + cam_esc_pct)
-            if (m - 1) % parking_esc_freq == 0:
+            if parking_esc_freq and parking_esc_freq > 0 and (m - 1) % parking_esc_freq == 0:
                 current_parking *= (1.0 + parking_esc_pct)
         
         months_rent.append(current_rent * area_sqft)
@@ -80,9 +80,10 @@ def simulate(params, capex_pm_df=None):
     
     # Stamp Duty & Registration calculation matching workbook's formula:
     # 1.5% of (Average Rent + Average Car Park + Average CAM + Security Deposit) * 1.18
+    term_years = term_months / 12.0
     g200 = (total_rent_inr / term_months) * 12
-    g201 = (total_parking_inr * 1.15) / 5
-    g202 = (total_cam_inr * 1.15) / 5
+    g201 = (total_parking_inr * 1.15) / term_years
+    g202 = (total_cam_inr * 1.15) / term_years
     g203 = sd_amount
     
     g204 = (g200 + g201 + g202 + g203) * 1.18

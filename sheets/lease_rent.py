@@ -37,6 +37,7 @@ def inject(ws, params):
     # Update starting date and calendar year dynamically
     ws["B31"] = "=Main!B4"
     ws["A31"] = "=YEAR(B31)"
+    ws["G19"] = "=YEAR(B31)"
 
     # Identify the year boundary rows
     # Year 1 ends at row 38 (8 months).
@@ -99,25 +100,25 @@ def inject(ws, params):
             ws.cell(row=r, column=6, value=f"=F{r-1}")
             
             # Rent Escalation
-            if (m - 1) % rent_esc_freq == 0:
+            if rent_esc_freq and rent_esc_freq > 0 and (m - 1) % rent_esc_freq == 0:
                 ws.cell(row=r, column=8, value=f"=H{r-1}*(1+{rent_esc_pct})")
             else:
                 ws.cell(row=r, column=8, value=f"=H{r-1}")
                 
             # Parking Escalation
-            if (m - 1) % parking_esc_freq == 0:
+            if parking_esc_freq and parking_esc_freq > 0 and (m - 1) % parking_esc_freq == 0:
                 ws.cell(row=r, column=9, value=f"=I{r-1}*(1+{parking_esc_pct})")
             else:
                 ws.cell(row=r, column=9, value=f"=I{r-1}")
                 
             # CAM Escalation
-            if (m - 1) % cam_esc_freq == 0:
+            if cam_esc_freq and cam_esc_freq > 0 and (m - 1) % cam_esc_freq == 0:
                 ws.cell(row=r, column=10, value=f"=J{r-1}*(1+{cam_esc_pct})")
             else:
                 ws.cell(row=r, column=10, value=f"=J{r-1}")
                 
         # Common columns for all active months
-        ws.cell(row=r, column=3, value=f"=EOMONTH(B{r},0)") # Column C: To Date
+        ws.cell(row=r, column=3, value=f"=EDATE(B{r},1)-1") # Column C: To Date
         ws.cell(row=r, column=4, value=1)                  # Column D: Months
         ws.cell(row=r, column=7, value="")                 # Column G: Escalation
         ws.cell(row=r, column=11, value=f"=H{r}*E{r}")     # Column K: Rental SQF

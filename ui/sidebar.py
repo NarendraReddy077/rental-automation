@@ -123,8 +123,8 @@ def render_sidebar():
         fitout_useful_lives = []
         fitout_active_months_breakdown = []
         
-        # Calculate years of the lease
-        lease_years = list(range(start_date.year, end_date.year + 1)) if (start_date and end_date) else []
+        # Calculate years of the lease (allowing up to 10 years from the start of the agreement date for fitouts)
+        lease_years = list(range(start_date.year, start_date.year + 10)) if start_date else []
         
         term_months = round((end_date - start_date).days / 30.4167) if (start_date and end_date) else 0
         parsed_active_months_list = params.get("Fitout Active Months Breakdown", [])
@@ -150,7 +150,7 @@ def render_sidebar():
             
             # Expandable year-by-year active months customization
             with st.expander(f"Phase {i+1} Year-by-Year Months Active"):
-                default_m_dist = calculate_fy_months(start_date, term_months, int(l)) if (start_date and term_months and l is not None) else {}
+                default_m_dist = calculate_fy_months(start_date, max(term_months, 120), int(l)) if (start_date and term_months and l is not None) else {}
                 phase_m_dict = parsed_active_months_list[i] if i < len(parsed_active_months_list) else {}
                 
                 # Check if the user has overridden spreadsheet defaults for useful life or dates

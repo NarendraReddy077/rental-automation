@@ -1,7 +1,7 @@
 import streamlit as st
 import importlib
 
-# 1. Streamlit Page Configuration (Must run first!)
+# 1. Streamlit Page Configuration
 st.set_page_config(
     page_title="Siemens - Rental Automation System",
     page_icon="🏢",
@@ -48,7 +48,7 @@ header_html = styles.load_template("header.html")
 if header_html:
     st.markdown(header_html, unsafe_allow_html=True)
 else:
-    st.title("🏢 Rental Automation System")
+    st.title("🏢 SRE Lease Rental Automation")
 
 # 5. Render Sidebar & Collect UI Configuration
 ui_params, upload_occurred, parse_error_msg = sidebar.render_sidebar()

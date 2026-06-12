@@ -44,7 +44,7 @@ default_params = {
     "Ready Reckoner Rate": 15000.0,
     "Exchange Rate": 105.02,
     "Incremental Restoration Cost Sqft": 82.6,
-    "Opex Others Per Month": 654.0,
+    "Opex Others Per Month": 60.0,
     "Opex II Per Month": 0.0,
     "Lease Term Months": 60
 }

@@ -25,24 +25,39 @@ def inject(ws, params):
     ws["B13"] = params["Imputed Interest Rate"]
     
     # Text clauses
-    rent_esc_years = params["Escalation Frequency Months"] // 12
-    ws["B14"] = f"{int(params['Escalation %'] * 100)}% every {rent_esc_years} years"
-    cam_esc_freq = params.get("CAM Escalation Frequency Months", 12)
-    if cam_esc_freq % 12 == 0:
-        cam_esc_years = cam_esc_freq // 12
-        if cam_esc_years == 1:
-            ws["B15"] = f"{int(params['CAM Escalation %'] * 100)}% every year"
-        else:
-            ws["B15"] = f"{int(params['CAM Escalation %'] * 100)}% every {cam_esc_years} years"
+    rent_freq = params.get("Escalation Frequency Months") or 0
+    rent_esc_pct = params.get("Escalation %") or 0.0
+    if rent_freq <= 0 or rent_esc_pct <= 0:
+        ws["B14"] = "No Rent Escalation"
     else:
-        ws["B15"] = f"{int(params['CAM Escalation %'] * 100)}% every {cam_esc_freq} months"
+        rent_esc_years = rent_freq // 12
+        if rent_esc_years == 1:
+            ws["B14"] = f"{int(rent_esc_pct * 100)}% every year"
+        elif rent_esc_years > 1:
+            ws["B14"] = f"{int(rent_esc_pct * 100)}% every {rent_esc_years} years"
+        else:
+            ws["B14"] = f"{int(rent_esc_pct * 100)}% every {rent_freq} months"
+            
+    cam_freq = params.get("CAM Escalation Frequency Months") or 0
+    cam_esc_pct = params.get("CAM Escalation %") or 0.0
+    if cam_freq <= 0 or cam_esc_pct <= 0:
+        ws["B15"] = "No CAM Escalation"
+    else:
+        if cam_freq % 12 == 0:
+            cam_esc_years = cam_freq // 12
+            if cam_esc_years == 1:
+                ws["B15"] = f"{int(cam_esc_pct * 100)}% every year"
+            else:
+                ws["B15"] = f"{int(cam_esc_pct * 100)}% every {cam_esc_years} years"
+        else:
+            ws["B15"] = f"{int(cam_esc_pct * 100)}% every {cam_freq} months"
     
     ws["B12"] = params.get("Cost of Capital", 0.105)
     ws["B16"] = params.get("4 Wheeler Slots", 80)
     ws["B17"] = params.get("4 Wheeler Rate", 1500.0)
     ws["B18"] = params.get("2 Wheeler Slots", 50)
     ws["B19"] = params.get("2 Wheeler Rate", 1000.0)
-
+ 
 def simulate(params):
     """
     Simulates the Main sheet values for the Streamlit UI preview.
@@ -52,6 +67,33 @@ def simulate(params):
     end_date = params["Agreement End Date"]
     duration_yrs = (end_date - start_date).days / 365.0
     
+    rent_freq = params.get("Escalation Frequency Months") or 0
+    rent_esc_pct = params.get("Escalation %") or 0.0
+    if rent_freq <= 0 or rent_esc_pct <= 0:
+        rent_clause = "No Rent Escalation"
+    else:
+        rent_esc_years = rent_freq // 12
+        if rent_esc_years == 1:
+            rent_clause = f"{int(rent_esc_pct * 100)}% every year"
+        elif rent_esc_years > 1:
+            rent_clause = f"{int(rent_esc_pct * 100)}% every {rent_esc_years} years"
+        else:
+            rent_clause = f"{int(rent_esc_pct * 100)}% every {rent_freq} months"
+
+    cam_freq = params.get("CAM Escalation Frequency Months") or 0
+    cam_esc_pct = params.get("CAM Escalation %") or 0.0
+    if cam_freq <= 0 or cam_esc_pct <= 0:
+        cam_clause = "No CAM Escalation"
+    else:
+        if cam_freq % 12 == 0:
+            cam_esc_years = cam_freq // 12
+            if cam_esc_years == 1:
+                cam_clause = f"{int(cam_esc_pct * 100)}% every year"
+            else:
+                cam_clause = f"{int(cam_esc_pct * 100)}% every {cam_esc_years} years"
+        else:
+            cam_clause = f"{int(cam_esc_pct * 100)}% every {cam_freq} months"
+            
     return {
         "REU Name": params["REU Name"],
         "Chargeable Area (Sq.ft.)": f"{int(params['Chargeable Area Sqft']):,}",
@@ -65,12 +107,8 @@ def simulate(params):
         "Capex Cost": f"{params['Currency']} {params['Fitout Cost']:,.2f}",
         "PM Cost Over Lease Period": f"{params['Currency']} {params['PM Cost Over Lease']:,.2f}",
         "Imputed Interest Rate": f"{params['Imputed Interest Rate']*100:.2f}%",
-        "Rent Escalation Clause": f"{int(params['Escalation %']*100)}% every {params['Escalation Frequency Months']//12} years",
-        "CAM Escalation Clause": (
-            f"{int(params['CAM Escalation %']*100)}% every year" if params.get("CAM Escalation Frequency Months", 12) == 12 else
-            (f"{int(params['CAM Escalation %']*100)}% every {params.get('CAM Escalation Frequency Months', 12)//12} years" if params.get("CAM Escalation Frequency Months", 12) % 12 == 0 else
-             f"{int(params['CAM Escalation %']*100)}% every {params.get('CAM Escalation Frequency Months', 12)} months")
-        ),
+        "Rent Escalation Clause": rent_clause,
+        "CAM Escalation Clause": cam_clause,
         "Energy Deposit": f"{params['Currency']} {params['Addnl.Deposit -energy(Refundable)']:,.2f}",
         "Incremental Restoration Cost / sqft": f"{params['Currency']} {params['Incremental Restoration Cost Sqft']:.2f}" if params.get("Incremental Restoration Cost Sqft") is not None else ""
     }

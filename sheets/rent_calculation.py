@@ -25,6 +25,13 @@ def inject(ws, params):
     # Link expected date of Agreement to close to the correct dynamic Lease Rent cell
     term_months = params.get("Lease Term Months", 72)
     ws["F51"] = f"='Lease Rent'!C{30 + term_months}"
+    
+    # Overwrite agreement period cell and stamp duty averages to use actual lease term
+    ws["F54"] = term_months
+    term_years = term_months / 12.0
+    ws["C204"] = f"Lease rent for average of {term_years:g} years + SD (including GST for stamp duty "
+    ws["G201"] = f"=(+G220*115%)/{term_years:g}"
+    ws["G202"] = f"=(+I220*115%)/{term_years:g}"
 
     # Disable Outline Level selectors / group symbols in the sheet
     if hasattr(ws, 'sheet_properties') and ws.sheet_properties:
@@ -84,18 +91,16 @@ def simulate(params):
     if end_date is None:
         end_date = datetime.date(2032, 3, 31)
 
-    # 1. Period in months using EOMONTH logic of Excel
-    def get_eomonth(d, m_offset):
+    # 1. Period in months using EDATE minus 1 day logic
+    def get_edate_minus_1(d, m_offset):
         y = d.year + (d.month + m_offset - 1) // 12
         m = (d.month + m_offset - 1) % 12 + 1
-        if m == 12:
-            next_month = datetime.date(y + 1, 1, 1)
-        else:
-            next_month = datetime.date(y, m + 1, 1)
-        eom = next_month - datetime.timedelta(days=1)
-        return eom
+        import calendar
+        last_day = calendar.monthrange(y, m)[1]
+        day = min(d.day, last_day)
+        return datetime.date(y, m, day) - datetime.timedelta(days=1)
 
-    end_date_for_period = get_eomonth(start_date, term_months - 1)
+    end_date_for_period = get_edate_minus_1(start_date, term_months)
     period_months = (end_date_for_period - start_date).days / 365.0 * 12.0
 
     # 2. Month-by-month escalations
@@ -136,9 +141,10 @@ def simulate(params):
     carrying_cost_per_sqft = total_sd_interest / (area_sqft * period_months)
 
     # 4. Stamp duty
+    term_years = term_months / 12.0
     avg_rent_yr = total_rent / period_months * 12.0
-    avg_parking_yr = (total_parking * 1.15) / 5.0
-    avg_cam_yr = (total_cam * 1.15) / 5.0
+    avg_parking_yr = (total_parking * 1.15) / term_years
+    avg_cam_yr = (total_cam * 1.15) / term_years
     g204 = (avg_rent_yr + avg_parking_yr + avg_cam_yr + sd_amount) * 1.18
     total_stamp_duty = g204 * 0.015
     eff_stamp_duty = total_stamp_duty / (area_sqft * period_months)
@@ -170,7 +176,7 @@ def simulate(params):
         active_months_breakdown = []
         for life in fitout_lifes:
             active_months_breakdown.append(
-                calculate_fy_months_local(start_date, term_months, life)
+                calculate_fy_months_local(start_date, max(term_months, 120), life)
             )
 
     years = sorted(list(set(yr for phase in active_months_breakdown for yr in phase.keys())))
