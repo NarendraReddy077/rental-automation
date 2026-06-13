@@ -57,6 +57,8 @@ def inject(ws, params):
     ws["B17"] = params.get("4 Wheeler Rate", 1500.0)
     ws["B18"] = params.get("2 Wheeler Slots", 50)
     ws["B19"] = params.get("2 Wheeler Rate", 1000.0)
+    ws["B20"] = params.get("Incremental Restoration Cost Sqft")
+
  
 def simulate(params):
     """

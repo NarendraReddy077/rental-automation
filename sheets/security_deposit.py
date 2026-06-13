@@ -9,12 +9,10 @@ def inject(ws, params):
     ws["B11"] = 0.0  # Additional deposit
     ws["B12"] = params["Addnl.Deposit -energy(Refundable)"]
     
-    # We can also write the cost of capital in cell F15 or other referencing fields if they are evaluated
-    # The original specimen has formulas in row 13, 14, 15 etc., so writing to B9-B12 is sufficient to compute carrying costs!
-    # For ARO calculations:
-    # ARO Cost rate cell is B23 in specimen: '=IF(B22<50000,82.6,62.72)'
-    # We will write the user incremental ARO rate to a cell or let it evaluate dynamically via formulas!
-    # The ARO Rate in the specimen sheet is already driven by Excel formulas!
+    # Write the user incremental ARO rate to cell B23 if overridden
+    aro_rate = params.get("Incremental Restoration Cost Sqft")
+    if aro_rate is not None and not pd.isna(aro_rate):
+        ws["B23"] = aro_rate
 
 def simulate(params):
     """
@@ -41,14 +39,14 @@ def simulate(params):
     
     # ARO (Asset Retirement Obligation) calculations
     aro_rate = params.get("Incremental Restoration Cost Sqft")
-    if aro_rate is None:
-        aro_rate = 0.0
-    elif aro_rate == 82.6 and area_sqft >= 50000:
+    if aro_rate is None or pd.isna(aro_rate):
+        aro_rate = 82.6 if (area_sqft is not None and area_sqft < 50000) else 62.72
+    elif aro_rate == 82.6 and area_sqft is not None and area_sqft >= 50000:
         aro_rate = 62.72
         
-    total_aro_cost = area_sqft * aro_rate
-    aro_per_month = total_aro_cost / term_months
-    aro_conversion_factor = aro_per_month / area_sqft
+    total_aro_cost = (area_sqft or 0.0) * aro_rate
+    aro_per_month = total_aro_cost / term_months if term_months else 0.0
+    aro_conversion_factor = aro_per_month / area_sqft if area_sqft else 0.0
     
     return {
         "Fitout Deposit": {"Amount": 0.0, "Carrying Cost": 0.0},

@@ -263,6 +263,9 @@ def render_sidebar():
         
         exchange_rate = st.number_input("Forex Rate (LC/Euro)", value=float(params["Exchange Rate"]) if params["Exchange Rate"] is not None else None, key=f"exchange_rate{key_suffix}", step=0.1, help="The foreign currency exchange rate (INR per 1 Euro) for reporting.")
 
+        aro_val = params.get("Incremental Restoration Cost Sqft")
+        aro_rate = st.number_input("ARO rate per sq ft", value=float(aro_val) if aro_val is not None else None, format="%.2f", step=1.0, key=f"aro_rate{key_suffix}", help="Asset Retirement Obligation (ARO) rate per square foot.")
+
     # Pack overrides into active UI parameters
     ui_params = {
         "REU Name": reu_name,
@@ -304,7 +307,7 @@ def render_sidebar():
         "Imputed Interest Rate": (float(imputed_rate) / 100.0) if imputed_rate is not None else None,
         "Ready Reckoner Rate": float(params.get("Ready Reckoner Rate", 15000.0)) if params.get("Ready Reckoner Rate") is not None else 15000.0,
         "Exchange Rate": float(exchange_rate) if exchange_rate is not None else None,
-        "Incremental Restoration Cost Sqft": float(params["Incremental Restoration Cost Sqft"]) if params.get("Incremental Restoration Cost Sqft") is not None else None,
+        "Incremental Restoration Cost Sqft": float(aro_rate) if aro_rate is not None else None,
         "Opex Others Per Month": float(opex_others) if opex_others is not None else 0.0,
         "Opex II Per Month": float(opex_ii) if opex_ii is not None else 0.0,
         "Lease Term Months": round((end_date - start_date).days / 30.4167) if (start_date and end_date) else 0
