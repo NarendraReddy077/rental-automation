@@ -16,6 +16,27 @@ def inject(ws, params):
     else:
         ws.cell(row=26, column=9, value=0)
 
+    # Update row 26 columns Q to Z for security deposit outflow (Year 1) and refund (last Year) dynamically
+    term_months = params.get("Lease Term Months", 72) or 72
+    import math
+    if term_months <= 8:
+        final_year = 1
+    else:
+        final_year = math.ceil((term_months - 8) / 12) + 1
+    final_year = min(final_year, 10)
+    
+    if final_year == 1:
+        ws.cell(row=26, column=17).value = "=U34-U34"
+    else:
+        ws.cell(row=26, column=17).value = "=U34"
+        
+    for y in range(2, 11):
+        col_idx = 16 + y
+        if y == final_year:
+            ws.cell(row=26, column=col_idx).value = "=-Q26"
+        else:
+            ws.cell(row=26, column=col_idx).value = None
+
 def simulate(params, capex_pm_df=None):
     """
     Simulates year-by-year cash outflows and NPV matching cell N36 of Lease Size.
@@ -124,11 +145,20 @@ def simulate(params, capex_pm_df=None):
     sd_months = params.get("Security Deposit Months", 6.0) or 6.0
     cam_sd_amount = cam_rate * area_sqft * sd_months
 
-    # Security deposit flows (Year 1 outflow, Year 7 refund)
+    # Security deposit flows (Year 1 outflow, Year last refund)
     years_sd = [0.0] * 10
     sd_flow = sd_amount + cam_sd_amount + energy_deposit + energy_deposit  # Energy deposit is added twice in formula
+    
+    import math
+    if term_months <= 8:
+        final_year = 1
+    else:
+        final_year = math.ceil((term_months - 8) / 12) + 1
+    final_year = min(final_year, 10)
+    final_year_idx = final_year - 1
+    
     years_sd[0] = sd_flow
-    years_sd[6] = -sd_flow
+    years_sd[final_year_idx] -= sd_flow
     
     # 3. Create dataframe rows (for return value and details)
     rows = []
