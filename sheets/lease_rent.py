@@ -1,5 +1,14 @@
 import openpyxl
 import math
+import datetime
+
+def get_edate_minus_1(d, m_offset):
+    y = d.year + (d.month + m_offset - 1) // 12
+    m = (d.month + m_offset - 1) % 12 + 1
+    import calendar
+    last_day = calendar.monthrange(y, m)[1]
+    day = min(d.day, last_day)
+    return datetime.date(y, m, day) - datetime.timedelta(days=1)
 
 def inject(ws, params):
     """
@@ -16,6 +25,33 @@ def inject(ws, params):
     parking_esc_freq = params.get("Parking Escalation Frequency Months", rent_esc_freq)
     term_months = params.get("Lease Term Months", 72)
     
+    # Calculate y1_months dynamically based on start_date and October-September financial year
+    start_date = params.get("Agreement Start Date")
+    if isinstance(start_date, str):
+        try:
+            start_date = datetime.datetime.strptime(start_date, "%Y-%m-%d").date()
+        except ValueError:
+            start_date = None
+            
+    if start_date is None:
+        start_date = datetime.date(2026, 4, 1)
+        
+    if start_date.month <= 9:
+        fy_end_year = start_date.year
+    else:
+        fy_end_year = start_date.year + 1
+        
+    first_fy_end = datetime.date(fy_end_year, 9, 30)
+        
+    y1_months = 0
+    for m in range(1, 100):
+        end_d = get_edate_minus_1(start_date, m)
+        if end_d <= first_fy_end:
+            y1_months = m
+        else:
+            break
+    y1_months = max(1, y1_months)
+
     # Calculate how many months we actually need to write
     # If the user-defined lease is longer than 72 months, we dynamically insert rows.
     # The default specimen template has 72 monthly rows (ending at row 102).
@@ -40,20 +76,6 @@ def inject(ws, params):
     ws["G19"] = "=YEAR(B31)"
 
     # Identify the year boundary rows
-    # Year 1 ends at row 38 (8 months).
-    # Year 2, 3, etc. have 12 months each.
-    # Boundary row is when a new year begins.
-    # Month 1 to 8: rows 31 to 38 (Year 1). Row 39 starts Year 2. So Row 39 contains Year 1 summary in N/O.
-    # Month 9 to 20: rows 39 to 50 (Year 2). Row 51 starts Year 3. So Row 51 contains Year 2 summary in N/O.
-    # In general:
-    # Year y (for y >= 2) starts at row: start_r = 39 + 12 * (y - 2)
-    # Year y ends at row: end_r = start_r + 11
-    # Boundary row (which starts Year y+1 and has Year y summary) is: sum_r = end_r + 1
-    
-    # Let's map summary rows to their respective years:
-    # Year 1 summary is at Row 39 (N39 = SUM(K31:K38))
-    # Year y summary is at Row 39 + 12 * (y - 1)
-    
     summary_rows = {}
     
     # Loop through all months and write formulas
@@ -88,7 +110,7 @@ def inject(ws, params):
             ws.cell(row=r, column=10, value="=Main!B8")
         else:
             # Year Column A
-            if m > 8 and (m - 9) % 12 == 0:
+            if m > y1_months and (m - y1_months - 1) % 12 == 0:
                 ws.cell(row=r, column=1, value=f"=A{r-1}+1")
             else:
                 ws.cell(row=r, column=1, value=f"=A{r-1}")
@@ -130,14 +152,14 @@ def inject(ws, params):
         # Year 2 summary at row 51 (Month 21)
         # etc.
         # So boundary row is when m = 8 + 12 * (y - 1) + 1 = 9 + 12 * (y - 1)
-        if m > 8 and (m - 9) % 12 == 0:
-            y = (m - 9) // 12 + 1  # This is the year that just ended
+        if m > y1_months and (m - y1_months - 1) % 12 == 0:
+            y = (m - y1_months - 1) // 12 + 1  # This is the year that just ended
             if y <= 10:
                 if y == 1:
                     start_sum = 31
-                    end_sum = 38
+                    end_sum = 30 + y1_months
                 else:
-                    start_sum = 39 + 12 * (y - 2)
+                    start_sum = 31 + y1_months + 12 * (y - 2)
                     end_sum = start_sum + 11
                 ws.cell(row=r, column=14, value=f"=SUM(K{start_sum}:K{end_sum})") # Column N: Rentals
                 ws.cell(row=r, column=15, value=f"=SUM(L{start_sum}:L{end_sum})") # Column O: CAM
@@ -145,17 +167,16 @@ def inject(ws, params):
                 summary_rows[y] = r
 
     # Calculate final year number and the final summary row index
-    # If term_months <= 8, final year is Year 1.
-    if term_months <= 8:
+    if term_months <= y1_months:
         final_year = 1
         start_sum = 31
         end_sum = 30 + term_months
     else:
-        final_year = math.ceil((term_months - 8) / 12) + 1
+        final_year = math.ceil((term_months - y1_months) / 12) + 1
         if final_year == 1:
             start_sum = 31
         else:
-            start_sum = 39 + 12 * (final_year - 2)
+            start_sum = 31 + y1_months + 12 * (final_year - 2)
         end_sum = 30 + term_months
         
     final_sum_row = 30 + term_months + 1

@@ -1,5 +1,14 @@
 import pandas as pd
 import numpy as np
+import datetime
+
+def get_edate_minus_1(d, m_offset):
+    y = d.year + (d.month + m_offset - 1) // 12
+    m = (d.month + m_offset - 1) % 12 + 1
+    import calendar
+    last_day = calendar.monthrange(y, m)[1]
+    day = min(d.day, last_day)
+    return datetime.date(y, m, day) - datetime.timedelta(days=1)
 
 def inject(ws, params):
     """
@@ -18,11 +27,37 @@ def inject(ws, params):
 
     # Update row 26 columns Q to Z for security deposit outflow (Year 1) and refund (last Year) dynamically
     term_months = params.get("Lease Term Months", 72) or 72
+    start_date = params.get("Agreement Start Date")
+    if isinstance(start_date, str):
+        try:
+            start_date = datetime.datetime.strptime(start_date, "%Y-%m-%d").date()
+        except ValueError:
+            start_date = None
+            
+    if start_date is None:
+        start_date = datetime.date(2026, 4, 1)
+        
+    if start_date.month <= 9:
+        fy_end_year = start_date.year
+    else:
+        fy_end_year = start_date.year + 1
+        
+    first_fy_end = datetime.date(fy_end_year, 9, 30)
+        
+    y1_months = 0
+    for m in range(1, 100):
+        end_d = get_edate_minus_1(start_date, m)
+        if end_d <= first_fy_end:
+            y1_months = m
+        else:
+            break
+    y1_months = max(1, y1_months)
+
     import math
-    if term_months <= 8:
+    if term_months <= y1_months:
         final_year = 1
     else:
-        final_year = math.ceil((term_months - 8) / 12) + 1
+        final_year = math.ceil((term_months - y1_months) / 12) + 1
     final_year = min(final_year, 10)
     
     if final_year == 1:
@@ -66,7 +101,6 @@ def simulate(params, capex_pm_df=None):
     
     # If start_date is a string, convert to date
     if isinstance(start_date, str):
-        import datetime
         try:
             start_date = datetime.datetime.strptime(start_date, "%Y-%m-%d").date()
         except ValueError:
@@ -110,16 +144,33 @@ def simulate(params, capex_pm_df=None):
     g204 = (g200 + g201 + g202 + g203) * 1.18
     total_stamp_duty = g204 * 0.015
     
-    # 2. Group months into 10 years (Year 1 is 8 months, others are 12 months)
+    # 2. Group months into 10 years (Year 1 is y1_months, others are 12 months)
     years_rent = [0.0] * 10
     years_cam = [0.0] * 10
     years_parking = [0.0] * 10
     
+    # Calculate y1_months dynamically for grouping
+    if start_date.month <= 9:
+        fy_end_year = start_date.year
+    else:
+        fy_end_year = start_date.year + 1
+        
+    first_fy_end = datetime.date(fy_end_year, 9, 30)
+    
+    y1_months = 0
+    for m in range(1, 100):
+        end_d = get_edate_minus_1(start_date, m)
+        if end_d <= first_fy_end:
+            y1_months = m
+        else:
+            break
+    y1_months = max(1, y1_months)
+    
     for m in range(1, term_months + 1):
-        if m <= 8:
+        if m <= y1_months:
             y_idx = 0
         else:
-            y_idx = (m - 9) // 12 + 1
+            y_idx = (m - y1_months - 1) // 12 + 1
             
         if y_idx < 10:
             years_rent[y_idx] += months_rent[m - 1]
@@ -150,10 +201,10 @@ def simulate(params, capex_pm_df=None):
     sd_flow = sd_amount + cam_sd_amount + energy_deposit + energy_deposit  # Energy deposit is added twice in formula
     
     import math
-    if term_months <= 8:
+    if term_months <= y1_months:
         final_year = 1
     else:
-        final_year = math.ceil((term_months - 8) / 12) + 1
+        final_year = math.ceil((term_months - y1_months) / 12) + 1
     final_year = min(final_year, 10)
     final_year_idx = final_year - 1
     
