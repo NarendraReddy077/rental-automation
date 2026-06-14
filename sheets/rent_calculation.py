@@ -235,7 +235,7 @@ def simulate(params):
 
     start_year = start_date.year
     tranches = []
-    for i in range(1, 9):
+    for i in range(1, 11):
         yr = start_year + i - 1
         cost = capex_sched.get(yr, 0.0)
         if i == 1:
@@ -248,11 +248,12 @@ def simulate(params):
         tranches.append({"cost": cost, "life": life, "start_year": yr})
 
     capex_used_dep = {}
+    capex_active_months = params.get("Capex Active Months Breakdown", [])
     for yr in years:
         dep_yr = 0.0
         for idx, t in enumerate(tranches):
             if yr >= t["start_year"] and t["life"] > 0:
-                active_m = get_capex_tranche_months(start_date, term_months, idx + 1, t["life"]).get(yr, 0)
+                active_m = capex_active_months[idx].get(yr, 0) if idx < len(capex_active_months) and capex_active_months[idx] else get_capex_tranche_months(start_date, term_months, idx + 1, t["life"]).get(yr, 0)
                 if active_m > 0:
                     dep_yr += (t["cost"] / t["life"]) * active_m
         capex_used_dep[yr] = dep_yr
@@ -261,17 +262,23 @@ def simulate(params):
     capex_book_end = {}
     capex_avg_book = {}
     capex_interest = {}
-    current_capex_book = sum(t["cost"] for t in tranches)
+    current_capex_book = 0.0
 
     for yr in years:
-        capex_book_begin[yr] = current_capex_book
+        capex_injected = capex_sched.get(yr, 0.0)
+        book_begin = current_capex_book + capex_injected
+        capex_book_begin[yr] = book_begin
+        
         dep_yr = capex_used_dep[yr]
-        current_capex_book -= dep_yr
-        capex_book_end[yr] = current_capex_book
-        capex_avg_book[yr] = (capex_book_begin[yr] + capex_book_end[yr]) / 2.0
+        book_end = book_begin - dep_yr
+        capex_book_end[yr] = book_end
+        
+        avg_val = (book_begin + book_end) / 2.0
+        capex_avg_book[yr] = avg_val
+        current_capex_book = book_end
         
         active_term = calculate_fy_months_local(start_date, term_months, term_months).get(yr, 0)
-        capex_interest[yr] = capex_avg_book[yr] * imputed_rate / 12.0 * active_term
+        capex_interest[yr] = avg_val * imputed_rate / 12.0 * active_term
 
     sum_capex_dep = sum(capex_used_dep.values())
     sum_capex_interest = sum(capex_interest.values())

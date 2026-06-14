@@ -17,6 +17,7 @@ def parse_input_xlsx(file_bytes):
                 fitout_active_months_breakdown,
                 capex_sched,
                 capex_lives,
+                capex_active_months_breakdown,
                 pm_sched,
                 has_capex_pm_sheet
             ) = parse_extra_sheets(raw_data, params)
@@ -38,6 +39,7 @@ def parse_input_xlsx(file_bytes):
             fitout_lifes = []
             fitout_active_months_breakdown = []
             capex_lives = {}
+            capex_active_months_breakdown = []
             was_breakdown_parsed = (len(fitout_breakdown) > 0)
             was_pm_parsed = (len(pm_sched) > 0)
 
@@ -49,6 +51,7 @@ def parse_input_xlsx(file_bytes):
             fitout_active_months_breakdown,
             capex_sched,
             capex_lives,
+            capex_active_months_breakdown,
             pm_sched,
             was_breakdown_parsed,
             was_pm_parsed

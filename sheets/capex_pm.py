@@ -41,6 +41,17 @@ def get_capex_tranche_months(start_date, term_months, tranche_idx, useful_life):
             return {}
         return calculate_fy_months(datetime.date(tranche_year, 1, 1), remaining, useful_life)
 
+def shift_merged_ranges(ws, start_row, amount):
+    """
+    Shifts merged cell ranges starting at or after start_row by amount.
+    """
+    ranges = list(ws.merged_cells.ranges)
+    for r in ranges:
+        if r.min_row >= start_row:
+            ws.merged_cells.remove(r)
+            r.shift(row_shift=amount)
+            ws.merged_cells.add(r)
+
 def inject(ws, params):
     """
     Injects parameters and schedules into 'CAPEX and PM' worksheet.
@@ -65,6 +76,7 @@ def inject(ws, params):
     # Insert new rows above row 20 if N > 3
     if N > 3:
         ws.insert_rows(20, amount=offset)
+        shift_merged_ranges(ws, 20, offset)
         
     # Write each Fitout phase
     for k in range(N):
@@ -182,11 +194,17 @@ def inject(ws, params):
     for c in range(6, 16):
         fy = start_year + (c - 6)
         ws.cell(row=r_capex_val, column=c, value=capex_sched.get(fy, 0.0))
-            
-    # Calculate and write active months for Capex tranches (Rows 40, 45, 50, 55, 60, 65, 70, 75 shifted)
-    num_capex_configured = len(capex_sched)
+        
+    # Calculate and write active months for Capex tranches (Rows 40, 45, 50, 55, 60, 65, 70, 75, 80, 85 shifted)
     capex_lives = params.get("Capex Useful Lives", {})
-    for i in range(1, 9):
+    capex_active_months = params.get("Capex Active Months Breakdown", [])
+    configured_years = list(capex_sched.keys()) + list(capex_lives.keys())
+    if configured_years:
+        num_capex_configured = min(10, max(configured_years) - start_year + 1)
+    else:
+        num_capex_configured = 0
+        
+    for i in range(1, 11):
         row_num = 40 + offset + 5 * (i - 1)
         yr = start_year + (i - 1)
         if i <= num_capex_configured:
@@ -197,7 +215,7 @@ def inject(ws, params):
                 elapsed = first_year_months + 12 * (i - 2)
                 default_life = max(0, term_months - elapsed)
             life = capex_lives.get(yr, default_life)
-            tranche_months = get_capex_tranche_months(start_date, term_months, i, life)
+            tranche_months = capex_active_months[i - 1] if (i - 1) < len(capex_active_months) and capex_active_months[i - 1] else get_capex_tranche_months(start_date, term_months, i, life)
         else:
             tranche_months = {}
             
@@ -218,14 +236,18 @@ def inject(ws, params):
             ws.cell(row=row_num+2, column=c, value=f"=IF({col_char}{row_num}<>0,${col_char_tranche}${38+offset}/$B${row_num+1},0)")
             ws.cell(row=row_num+3, column=c, value=f"={col_char}{row_num+2}/12*{col_char}{row_num}")
             
-    # Update Capex book value formulas
-    r_cap_fit = 81 + offset
-    r_cap_mtr = 82 + offset
-    r_cap_year = 83 + offset
-    r_cap_imp = 86 + offset
-    r_cap_dep = 87 + offset
-    r_cap_per_sqft = 89 + offset
-    r_cap_per_sqmtr = 90 + offset
+        # Show/Hide rows based on whether this tranche is configured
+        for r in range(row_num, row_num + 5):
+            ws.row_dimensions[r].hidden = (i > num_capex_configured)
+            
+    # Update Capex book value formulas (shifted by offset and offset_capex=9)
+    r_cap_fit = 81 + offset + 9
+    r_cap_mtr = 82 + offset + 9
+    r_cap_year = 83 + offset + 9
+    r_cap_imp = 86 + offset + 9
+    r_cap_dep = 87 + offset + 9
+    r_cap_per_sqft = 89 + offset + 9
+    r_cap_per_sqmtr = 90 + offset + 9
     
     ws.cell(row=r_cap_fit, column=2, value=f"=B{21+offset}")
     ws.cell(row=r_cap_fit, column=6, value=f"=+F{38+offset}")
@@ -239,7 +261,7 @@ def inject(ws, params):
         ws.cell(row=r_cap_mtr, column=c, value=f"={col_char}{r_cap_fit}-{col_char}{r_cap_dep}")
         ws.cell(row=r_cap_year, column=c, value=f"=({col_char}{r_cap_fit}+{col_char}{r_cap_mtr})/2")
         ws.cell(row=r_cap_imp, column=c, value=f"={col_char}{r_cap_year}*$B${38+offset}/12*{col_char}{40+offset}")
-        ws.cell(row=r_cap_dep, column=c, value="=" + "+".join([f"{col_char}{43 + offset + 5 * k}" for k in range(8)]))
+        ws.cell(row=r_cap_dep, column=c, value="=" + "+".join([f"{col_char}{43 + offset + 5 * k}" for k in range(10)]))
         ws.cell(row=r_cap_per_sqft, column=c, value=f"=SUM({col_char}{r_cap_imp}:{col_char}{r_cap_imp+2})")
         
     ws.cell(row=r_cap_imp, column=5, value=f"=SUM(F{r_cap_imp}:O{r_cap_imp})")
@@ -247,9 +269,9 @@ def inject(ws, params):
     ws.cell(row=r_cap_per_sqmtr, column=5, value=f"=IFERROR(SUM(F{r_cap_imp}:O{r_cap_dep})/E{40+offset},0)")
 
     # ---------------- PM SECTION ----------------
-    r_pm_total = 95 + offset
-    r_pm_per_sqft = 96 + offset
-    r_pm_per_sqmtr = 97 + offset
+    r_pm_total = 95 + offset + 9
+    r_pm_per_sqft = 96 + offset + 9
+    r_pm_per_sqmtr = 97 + offset + 9
     
     # Write Maintenance (PM) schedule by FY
     pm_sched = params.get("PM Schedule", {})
@@ -292,9 +314,10 @@ def simulate(params):
     years = list(range(start_year, start_year + 10))
     
     # Capex section calculations
+    capex_active_months = params.get("Capex Active Months Breakdown", [])
     tranches = []
     capex_lives = params.get("Capex Useful Lives", {})
-    for i in range(1, 9):
+    for i in range(1, 11):
         yr = start_year + i - 1
         cost = capex_sched.get(yr, 0.0)
         if i == 1:
@@ -312,7 +335,7 @@ def simulate(params):
         })
         
     rows = []
-    current_capex_book = sum([t["cost"] for t in tranches])
+    current_capex_book = 0.0
     
     for yr in years:
         # Calculate dynamic Fitout depreciation for all configured phases
@@ -329,20 +352,26 @@ def simulate(params):
             dep_k = (cost_k / (life_k / 12) / 12) * m_k if m_k > 0 and life_k > 0 else 0.0
             total_fitout_dep += dep_k
             
+        # Capex injected in current year
+        capex_injected = capex_sched.get(yr, 0.0)
+        book_begin = current_capex_book + capex_injected
+        
         # Capex Depreciation
         capex_dep = 0.0
         for idx, t in enumerate(tranches):
             if yr >= t["start_year"] and t["life"] > 0:
-                active_months = get_capex_tranche_months(start_date, term_months, idx + 1, t["life"]).get(yr, 0)
+                active_months = capex_active_months[idx].get(yr, 0) if idx < len(capex_active_months) and capex_active_months[idx] else get_capex_tranche_months(start_date, term_months, idx + 1, t["life"]).get(yr, 0)
                 if active_months > 0:
                     capex_dep += (t["cost"] / t["life"]) * active_months
                     
+        book_end = book_begin - capex_dep
+        current_capex_book = book_end
+        
         # Capex Imputed Interest
         active_term = calculate_fy_months(start_date, term_months, term_months).get(yr, 0)
         capex_imputed_interest = 0.0
         if active_term > 0:
-            capex_imputed_interest = (current_capex_book - capex_dep / 2.0) * imputed_rate / 12.0 * active_term
-            current_capex_book -= capex_dep
+            capex_imputed_interest = ((book_begin + book_end) / 2.0) * imputed_rate / 12.0 * active_term
             
         rows.append({
             "Fiscal Year": yr,

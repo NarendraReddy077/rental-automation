@@ -21,6 +21,7 @@ def parse_extra_sheets(raw_data, params):
     fitout_active_months_breakdown = []
     capex_sched = {}
     capex_lives = {}
+    capex_active_months_breakdown = []
     pm_sched = {}
     
     wb = openpyxl.load_workbook(io.BytesIO(raw_data), data_only=True)
@@ -113,12 +114,25 @@ def parse_extra_sheets(raw_data, params):
                 val_num = float(val) if val is not None else 0.0
             except (ValueError, TypeError):
                 val_num = 0.0
-            if val_num > 0:
-                capex_sched[yr] = val_num
+            capex_sched[yr] = val_num
+            try:
+                capex_lives[yr] = int(life_val) if life_val is not None else 0
+            except (ValueError, TypeError):
+                pass
+                
+        # Parse active months for each capex tranche (columns F to O)
+        for i in range(10):
+            tranche_row = r_capex_header + 4 + 5 * i
+            tranche_m = {}
+            for c in range(6, 16):
+                yr_val = ws.cell(row=r_capex_header, column=c).value
+                m_val = ws.cell(row=tranche_row, column=c).value
                 try:
-                    capex_lives[yr] = int(life_val) if life_val is not None else 0
+                    yr = int(float(str(yr_val).strip()))
                 except (ValueError, TypeError):
-                    pass
+                    continue
+                tranche_m[yr] = int(m_val) if isinstance(m_val, (int, float)) else 0
+            capex_active_months_breakdown.append(tranche_m)
                     
         # 3. Parse PM schedule from PM row
         r_pm = 95
@@ -146,6 +160,7 @@ def parse_extra_sheets(raw_data, params):
         fitout_active_months_breakdown,
         capex_sched,
         capex_lives,
+        capex_active_months_breakdown,
         pm_sched,
         has_capex_pm_sheet
     )

@@ -2,7 +2,7 @@ import streamlit as st
 import datetime
 import os
 from sheets.input_parser import parse_input_xlsx
-from sheets.capex_pm import calculate_fy_months
+from sheets.capex_pm import calculate_fy_months, get_capex_tranche_months
 from core.parameters import blank_params
 
 def render_sidebar():
@@ -116,7 +116,7 @@ def render_sidebar():
         # Filter out zeros from breakdown to determine configured phases
         non_zero_fitouts = [f for f in fitout_breakdown if f > 0]
         default_num_fitouts = max(1, len(non_zero_fitouts))
-        max_fitouts = max(8, default_num_fitouts)
+        max_fitouts = max(10, default_num_fitouts)
         num_fitouts = st.selectbox("Number of Fitout Phases", list(range(1, max_fitouts + 1)), index=default_num_fitouts - 1, key=f"num_fitouts{key_suffix}", help="Select the number of dynamic fitout phases.")
         
         fitout_costs = []
@@ -194,12 +194,14 @@ def render_sidebar():
         else:
             default_num_capex = 5
             
-        max_capex = max(8, default_num_capex)
+        max_capex = max(10, default_num_capex)
         num_capex = st.selectbox("Number of Capex Years", list(range(1, max_capex + 1)), index=default_num_capex - 1, key=f"num_capex{key_suffix}", help="Select the number of years for CAPEX injection.")
         
         capex_schedule = {}
         capex_useful_lives = {}
         capex_lives_dict = params.get("Capex Useful Lives", {})
+        parsed_capex_active_months_list = params.get("Capex Active Months Breakdown", [])
+        capex_active_months_breakdown = []
         
         for i in range(num_capex):
             yr = start_year + i
@@ -224,6 +226,37 @@ def render_sidebar():
             capex_useful_lives[yr] = int(life) if life is not None else 0
             if val is not None and val > 0:
                 capex_schedule[yr] = float(val)
+
+            # Expandable year-by-year active months customization
+            with st.expander(f"Capex FY{yr} Year-by-Year Months Active"):
+                default_m_dist = get_capex_tranche_months(start_date, term_months, i + 1, int(life)) if (start_date and term_months and life is not None) else {}
+                tranche_m_dict = parsed_capex_active_months_list[i] if i < len(parsed_capex_active_months_list) else {}
+                
+                # Check if the user has overridden spreadsheet defaults for useful life or dates
+                is_override = (
+                    (default_l is not None and life != default_l) or
+                    (start_date != params.get("Agreement Start Date")) or
+                    (end_date != params.get("Agreement End Date"))
+                )
+                
+                tranche_m_custom = {}
+                for cy in lease_years:
+                    if is_override:
+                        default_m = default_m_dist.get(cy, 0)
+                    else:
+                        default_m = tranche_m_dict.get(cy, default_m_dist.get(cy, 0))
+                        
+                    # Include life, start_date, and term_months in the key to recreate the widget when dependencies are altered
+                    key = f"capex_{i}_m_{cy}_{life}_{start_date}_{term_months}{key_suffix}"
+                    m = st.number_input(
+                        f"FY{cy} Active Months",
+                        min_value=0,
+                        max_value=12,
+                        value=int(default_m),
+                        key=key
+                    )
+                    tranche_m_custom[cy] = int(m)
+                capex_active_months_breakdown.append(tranche_m_custom)
                 
         capex_total = sum(capex_schedule.values())
         st.info(f"Total Capex Cost: {params.get('Currency', 'INR')} {capex_total:,.2f}")
@@ -298,6 +331,7 @@ def render_sidebar():
         "Fitout Active Months Breakdown": fitout_active_months_breakdown,
         "Capex Schedule": capex_schedule,
         "Capex Useful Lives": capex_useful_lives,
+        "Capex Active Months Breakdown": capex_active_months_breakdown,
         "PM Cost Over Lease": float(pm_cost_total) if pm_cost_total is not None else 0.0,
         "PM Schedule": pm_schedule,
         

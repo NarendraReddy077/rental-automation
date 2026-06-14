@@ -8,6 +8,7 @@ def apply_schedules_and_fallbacks(
     fitout_active_months_breakdown,
     capex_sched,
     capex_lives,
+    capex_active_months_breakdown,
     pm_sched,
     was_breakdown_parsed,
     was_pm_parsed
@@ -73,14 +74,26 @@ def apply_schedules_and_fallbacks(
 
     # Capex useful lives fallback
     if not capex_lives:
-        for idx, yr in enumerate(sorted(capex_sched.keys())):
-            if idx == 0:
+        for yr in sorted(capex_sched.keys()):
+            if yr == start_year:
                 life = term_months
             else:
                 first_year_months = 12 - start_date.month + 1
-                elapsed = first_year_months + 12 * (idx - 1)
+                elapsed = first_year_months + 12 * (yr - start_year - 1)
                 life = max(0, term_months - elapsed)
             capex_lives[yr] = life
+
+    # Capex active months fallback
+    if not capex_active_months_breakdown:
+        capex_active_months_breakdown = []
+        from sheets.capex_pm import get_capex_tranche_months
+        # Filter years to match start_year up to start_year + 9 (maximum 10 tranches)
+        for idx in range(10):
+            yr = start_year + idx
+            life = capex_lives.get(yr, term_months)
+            capex_active_months_breakdown.append(
+                get_capex_tranche_months(start_date, term_months, idx + 1, life)
+            )
 
     # PM schedule fallback
     if not pm_sched:
@@ -107,6 +120,7 @@ def apply_schedules_and_fallbacks(
     params["Fitout Active Months Breakdown"] = fitout_active_months_breakdown
     params["Capex Schedule"] = capex_sched
     params["Capex Useful Lives"] = capex_lives
+    params["Capex Active Months Breakdown"] = capex_active_months_breakdown
     params["PM Schedule"] = pm_sched
 
     return params
