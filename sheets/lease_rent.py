@@ -223,3 +223,20 @@ def inject(ws, params):
                 rc_ws.cell(row=r_rc, column=3, value=0.0)
                 rc_ws.cell(row=r_rc, column=7, value=0.0)
                 rc_ws.cell(row=r_rc, column=9, value=0.0)
+
+    # Update bottom borders to separate years dynamically
+    from openpyxl.styles import Border, Side
+    for m in range(1, term_months + 1):
+        r = 30 + m
+        is_year_end = (m == y1_months) or (m > y1_months and (m - y1_months) % 12 == 0) or (m == term_months)
+        
+        for c in range(1, 17):
+            cell = ws.cell(row=r, column=c)
+            current_border = cell.border
+            new_border = Border(
+                left=current_border.left,
+                right=current_border.right,
+                top=current_border.top,
+                bottom=Side(style='medium') if is_year_end else Side(style=None)
+            )
+            cell.border = new_border
