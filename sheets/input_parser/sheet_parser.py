@@ -76,7 +76,8 @@ def parse_extra_sheets(raw_data, params):
                 life_val_months = ws.cell(row=r_m, column=5).value
                 
                 cost = float(cost_val) if isinstance(cost_val, (int, float)) else 0.0
-                life = int(life_val_months) if isinstance(life_val_months, (int, float)) else 72
+                term_months = params.get("Lease Term Months", 72)
+                life = int(life_val_months) if isinstance(life_val_months, (int, float)) else term_months
                 
                 fitout_breakdown.append(cost)
                 fitout_lifes.append(life)

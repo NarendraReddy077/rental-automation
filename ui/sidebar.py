@@ -153,9 +153,13 @@ def render_sidebar():
                 default_m_dist = calculate_fy_months(start_date, max(term_months, 120), int(l)) if (start_date and term_months and l is not None) else {}
                 phase_m_dict = parsed_active_months_list[i] if i < len(parsed_active_months_list) else {}
                 
+                spreadsheet_l = fitout_lifes[i] if i < len(fitout_lifes) else None
+                if i == 0 and spreadsheet_l is None:
+                    spreadsheet_l = term_months
+                
                 # Check if the user has overridden spreadsheet defaults for useful life or dates
                 is_override = (
-                    (default_l is not None and l != default_l) or
+                    (spreadsheet_l is not None and l != spreadsheet_l) or
                     (start_date != params.get("Agreement Start Date")) or
                     (end_date != params.get("Agreement End Date"))
                 )
@@ -192,7 +196,7 @@ def render_sidebar():
         if non_zero_capex_years:
             default_num_capex = max(1, max(non_zero_capex_years) - start_year + 1)
         else:
-            default_num_capex = 5
+            default_num_capex = 3
             
         max_capex = max(10, default_num_capex)
         num_capex = st.selectbox("Number of Capex Years", list(range(1, max_capex + 1)), index=default_num_capex - 1, key=f"num_capex{key_suffix}", help="Select the number of years for CAPEX injection.")
@@ -277,7 +281,7 @@ def render_sidebar():
         for i in range(num_pm):
             yr = start_year + i
             default_val = pm_dict.get(yr, None)
-            val = st.number_input(f"PM FY{yr}", value=int(default_val) if default_val is not None else None, key=f"pm_cost_{i}{key_suffix}", step=50000, help=f"Preventive Maintenance budget allocation for Fiscal Year {yr}.")
+            val = st.number_input(f"PM FY{i+1}", value=int(default_val) if default_val is not None else None, key=f"pm_cost_{i}{key_suffix}", step=50000, help=f"Preventive Maintenance budget allocation for Fiscal Year {yr}.")
             if val is not None and val > 0:
                 pm_schedule[yr] = float(val)
                 

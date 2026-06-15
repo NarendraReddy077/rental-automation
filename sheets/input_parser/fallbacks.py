@@ -23,7 +23,7 @@ def apply_schedules_and_fallbacks(
     # If fitout breakdown was not parsed, initialize default 3 phases
     if not fitout_breakdown:
         fitout_breakdown = [14000000.0, 5000000.0, 15000000.0]
-        fitout_lifes = [72, 30, 48]
+        fitout_lifes = [term_months, 30, 48]
         
     if was_breakdown_parsed:
         # Update Fitout Cost to match sum of parsed breakdown
@@ -41,7 +41,7 @@ def apply_schedules_and_fallbacks(
 
     # If fitout_lifes is empty, initialize default lives
     if not fitout_lifes:
-        default_lifes = [72, 30, 48]
+        default_lifes = [term_months, 30, 48]
         fitout_lifes = []
         for idx in range(len(fitout_breakdown)):
             if idx < len(default_lifes):

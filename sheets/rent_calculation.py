@@ -171,7 +171,7 @@ def simulate(params):
 
     if not fitouts:
         fitouts = [14000000.0, 5000000.0, 15000000.0]
-        fitout_lifes = [72, 30, 48]
+        fitout_lifes = [term_months, 30, 48]
     if not active_months_breakdown:
         active_months_breakdown = []
         for life in fitout_lifes:

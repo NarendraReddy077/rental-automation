@@ -303,7 +303,7 @@ def simulate(params):
     while len(fitouts) < 3:
         fitouts.append(0.0)
     while len(fitout_lifes) < 3:
-        default_lifes = [72, 30, 48]
+        default_lifes = [term_months, 30, 48]
         fitout_lifes.append(default_lifes[len(fitout_lifes)])
     while len(fitout_active_months) < 3:
         fitout_active_months.append({})
