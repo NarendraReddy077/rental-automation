@@ -12,7 +12,9 @@ def inject(ws, params):
     ws["F33"] = params.get("Security Deposit Months", 10)
     ws["F69"] = params.get("Addnl.Deposit -energy(Refundable)", 0.0)
     ws["F117"] = params.get("Opex Others Per Month", 654.0)
-    ws["F118"] = "=F117*7%"
+    opex_mgmt_fee = params.get("Opex Management Fee Pct", 0.07)
+    ws["F118"] = f"=F117*{opex_mgmt_fee}"
+    ws["G118"] = f"=G117*{opex_mgmt_fee}"
     ws["F122"] = params.get("Opex II Per Month", 0.0)
     ws["G122"] = "=F122"
     
@@ -305,7 +307,8 @@ def simulate(params):
 
     # 12. Opex
     opex_others = params.get("Opex Others Per Month", 63.0)
-    opex_1 = opex_others * 1.07
+    opex_mgmt_fee = params.get("Opex Management Fee Pct", 0.07)
+    opex_1 = opex_others * (1.0 + opex_mgmt_fee)
     opex_2 = params.get("Opex II Per Month", 0.0)
 
     # 13. Total

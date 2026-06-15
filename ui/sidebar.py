@@ -105,6 +105,7 @@ def render_sidebar():
     # Expander 1.6: OpEx Configuration
     with st.sidebar.expander("▶ OpEx Configuration"):
         opex_others = st.number_input("Opex I (per month)", value=float(params.get("Opex Others Per Month")) if params.get("Opex Others Per Month") is not None else None, key=f"opex_others{key_suffix}", step=10.0, help="Opex Others monthly amount.")
+        opex_mgmt_fee = st.number_input("Opex Management fee %", value=float(params.get("Opex Management Fee Pct") * 100) if params.get("Opex Management Fee Pct") is not None else 7.0, format="%.2f", step=0.10, key=f"opex_mgmt_fee{key_suffix}", help="Management fee percentage applied to Opex I.")
         opex_ii = st.number_input("Opex II (per month)", value=float(params.get("Opex II Per Month")) if params.get("Opex II Per Month") is not None else None, key=f"opex_ii{key_suffix}", step=10.0, help="Opex II monthly amount (OpEx Add-on).")
 
     # Expander 2: CAPEX & PM Investment Schedule
@@ -347,6 +348,7 @@ def render_sidebar():
         "Exchange Rate": float(exchange_rate) if exchange_rate is not None else None,
         "Incremental Restoration Cost Sqft": float(aro_rate) if aro_rate is not None else None,
         "Opex Others Per Month": float(opex_others) if opex_others is not None else 0.0,
+        "Opex Management Fee Pct": (float(opex_mgmt_fee) / 100.0) if opex_mgmt_fee is not None else 0.07,
         "Opex II Per Month": float(opex_ii) if opex_ii is not None else 0.0,
         "Lease Term Months": round((end_date - start_date).days / 30.4167) if (start_date and end_date) else 0
     }

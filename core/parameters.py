@@ -45,6 +45,7 @@ default_params = {
     "Exchange Rate": 105.02,
     "Incremental Restoration Cost Sqft": 82.6,
     "Opex Others Per Month": 60.0,
+    "Opex Management Fee Pct": 0.07,
     "Opex II Per Month": 0.0,
     "Lease Term Months": 60
 }
@@ -90,6 +91,7 @@ blank_params = {
     "Exchange Rate": None,
     "Incremental Restoration Cost Sqft": None,
     "Opex Others Per Month": 0.0,
+    "Opex Management Fee Pct": 0.07,
     "Opex II Per Month": 0.0,
     "Lease Term Months": 0
 }
