@@ -22,12 +22,13 @@ def parse_input_xlsx(file_bytes):
                 has_capex_pm_sheet
             ) = parse_extra_sheets(raw_data, params)
             
+            start_year = params["Agreement Start Date"].year if "Agreement Start Date" in params and params["Agreement Start Date"] else 2026
             was_breakdown_parsed = (len(fitout_breakdown) > 0)
             was_pm_parsed = (len(pm_sched) > 0)
             
             if not has_capex_pm_sheet:
                 # Fallback parsing if CAPEX and PM sheet is missing
-                f_breakdown, c_sched, p_sched = parse_schedules_from_main_fallback(raw_params)
+                f_breakdown, c_sched, p_sched = parse_schedules_from_main_fallback(raw_params, start_year)
                 fitout_breakdown = f_breakdown
                 capex_sched = c_sched
                 pm_sched = p_sched
@@ -35,7 +36,8 @@ def parse_input_xlsx(file_bytes):
                 was_pm_parsed = (len(pm_sched) > 0)
         except Exception:
             # If openpyxl parsing fails, fallback to regex parsing from main
-            fitout_breakdown, capex_sched, pm_sched = parse_schedules_from_main_fallback(raw_params)
+            start_year = params.get("Agreement Start Date").year if params.get("Agreement Start Date") else 2026
+            fitout_breakdown, capex_sched, pm_sched = parse_schedules_from_main_fallback(raw_params, start_year)
             fitout_lifes = []
             fitout_active_months_breakdown = []
             capex_lives = {}

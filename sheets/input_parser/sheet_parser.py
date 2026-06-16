@@ -166,7 +166,7 @@ def parse_extra_sheets(raw_data, params):
         has_capex_pm_sheet
     )
 
-def parse_schedules_from_main_fallback(raw_params):
+def parse_schedules_from_main_fallback(raw_params, start_year=2026):
     """Regex parses fitout cost breakdown, Capex schedule, and PM schedule from raw_params."""
     fitout_breakdown = []
     capex_sched = {}
@@ -202,6 +202,16 @@ def parse_schedules_from_main_fallback(raw_params):
                         capex_sched[yr] = float(val)
                 except Exception:
                     pass
+            else:
+                m_rel = re.search(r"fy(\d+)", key_clean)
+                if m_rel:
+                    try:
+                        n = int(m_rel.group(1))
+                        yr = start_year + n - 1
+                        if val is not None and not pd.isna(val):
+                            capex_sched[yr] = float(val)
+                    except Exception:
+                        pass
                 
     # 3. PM schedule
     for key, val in raw_params.items():
@@ -217,5 +227,15 @@ def parse_schedules_from_main_fallback(raw_params):
                         pm_sched[yr] = float(val)
                 except Exception:
                     pass
+            else:
+                m_rel = re.search(r"fy(\d+)", key_clean)
+                if m_rel:
+                    try:
+                        n = int(m_rel.group(1))
+                        yr = start_year + n - 1
+                        if val is not None and not pd.isna(val):
+                            pm_sched[yr] = float(val)
+                    except Exception:
+                        pass
 
     return fitout_breakdown, capex_sched, pm_sched

@@ -177,7 +177,7 @@ def render_sidebar():
                     # Include l, start_date, and term_months in the key to recreate the widget when dependencies are altered
                     key = f"fitout_{i}_m_{yr}_{l}_{start_date}_{term_months}{key_suffix}"
                     m = st.number_input(
-                        f"FY{yr} Active Months",
+                        f"FY{yr - start_date.year + 1} Active Months",
                         min_value=0,
                         max_value=12,
                         value=int(default_m),
@@ -226,16 +226,16 @@ def render_sidebar():
             
             col1, col2 = st.columns(2)
             with col1:
-                val = st.number_input(f"Capex FY{yr} Cost", value=int(default_val) if default_val is not None else None, key=f"capex_cost_{i}{key_suffix}", step=100000, help=f"Estimated Capital Expenditures for Fiscal Year {yr}.")
+                val = st.number_input(f"Capex FY{i+1} Cost", value=int(default_val) if default_val is not None else None, key=f"capex_cost_{i}{key_suffix}", step=100000, help=f"Estimated Capital Expenditures for Fiscal Year {yr}.")
             with col2:
-                life = st.number_input(f"FY{yr} Useful Life (mo)", value=int(default_l) if default_l is not None else None, key=f"capex_life_{i}{key_suffix}", step=12, help=f"Amortization period for CAPEX in Fiscal Year {yr} in months.")
+                life = st.number_input(f"FY{i+1} Useful Life (mo)", value=int(default_l) if default_l is not None else None, key=f"capex_life_{i}{key_suffix}", step=12, help=f"Amortization period for CAPEX in Fiscal Year {yr} in months.")
                 
             capex_useful_lives[yr] = int(life) if life is not None else 0
             if val is not None and val > 0:
                 capex_schedule[yr] = float(val)
 
             # Expandable year-by-year active months customization
-            with st.expander(f"Capex FY{yr} Year-by-Year Months Active"):
+            with st.expander(f"Capex FY{i+1} Year-by-Year Months Active"):
                 default_m_dist = get_capex_tranche_months(start_date, term_months, i + 1, int(life)) if (start_date and term_months and life is not None) else {}
                 tranche_m_dict = parsed_capex_active_months_list[i] if i < len(parsed_capex_active_months_list) else {}
                 
@@ -256,7 +256,7 @@ def render_sidebar():
                     # Include life, start_date, and term_months in the key to recreate the widget when dependencies are altered
                     key = f"capex_{i}_m_{cy}_{life}_{start_date}_{term_months}{key_suffix}"
                     m = st.number_input(
-                        f"FY{cy} Active Months",
+                        f"FY{cy - start_year + 1} Active Months",
                         min_value=0,
                         max_value=12,
                         value=int(default_m),

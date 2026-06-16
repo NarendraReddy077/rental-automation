@@ -63,8 +63,9 @@ def inject(ws, params):
     if pd.isna(term_months) or term_months is None:
         term_months = 72
 
-    # Write dynamic start year in F2 to update all sequential year headers in Excel
-    ws.cell(row=2, column=6, value=start_year)
+    # Write dynamic relative year headers in Row 2
+    for c in range(6, 16):
+        ws.cell(row=2, column=c, value=f"FY{c - 5}")
 
     fitouts = list(params.get("Fitout Cost Breakdown", []))
     fitout_lifes = list(params.get("Fitout Useful Lives", []))
@@ -190,6 +191,9 @@ def inject(ws, params):
     r_capex_val = 38 + offset
     
     # Write Capex schedule by FY
+    for c in range(6, 16):
+        ws.cell(row=r_capex_header, column=c, value=f"FY{c - 5}")
+        
     capex_sched = params.get("Capex Schedule", {})
     for c in range(6, 16):
         fy = start_year + (c - 6)
