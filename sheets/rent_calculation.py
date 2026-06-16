@@ -18,7 +18,7 @@ def inject(ws, params):
     ws["G118"] = f"=G117*{opex_mgmt_fee}"
     ws["G93"] = f"=(+SUM(G86:G92)+G103)*{opex_mgmt_fee}"
     ws["F122"] = params.get("Opex II Per Month", 0.0)
-    ws["G122"] = "=F122"
+    ws["G122"] = "=F122*F6"
     
     # Link parking counts and rates dynamically to the Lease Rent sheet input table
     ws["F43"] = "='Lease Rent'!D22"
@@ -159,16 +159,43 @@ def simulate(params):
     # Helper function for distributing months
     def calculate_fy_months_local(s_dt, t_m, f_t_m):
         fy_months = {}
-        c_yr = s_dt.year
-        rem_m = min(t_m, f_t_m)
-        f_yr_m = min(rem_m, 12 - s_dt.month + 1)
-        fy_months[c_yr] = f_yr_m
-        rem_m -= f_yr_m
-        while rem_m > 0:
-            c_yr += 1
-            mns = min(rem_m, 12)
-            fy_months[c_yr] = mns
-            rem_m -= mns
+        remaining_months = min(t_m, f_t_m)
+        if remaining_months <= 0:
+            return fy_months
+            
+        if s_dt.month <= 9:
+            fy_end_year = s_dt.year
+        else:
+            fy_end_year = s_dt.year + 1
+            
+        first_fy_end = datetime.date(fy_end_year, 9, 30)
+        
+        y1_months = 0
+        for m in range(1, 100):
+            y = s_dt.year + (s_dt.month + m - 1) // 12
+            m_calc = (s_dt.month + m - 1) % 12 + 1
+            import calendar
+            last_day = calendar.monthrange(y, m_calc)[1]
+            day = min(s_dt.day, last_day)
+            end_d = datetime.date(y, m_calc, day) - datetime.timedelta(days=1)
+            
+            if end_d <= first_fy_end:
+                y1_months = m
+            else:
+                break
+        y1_months = max(1, y1_months)
+        
+        current_key_year = s_dt.year
+        first_year_m = min(remaining_months, y1_months)
+        fy_months[current_key_year] = first_year_m
+        remaining_months -= first_year_m
+        
+        while remaining_months > 0:
+            current_key_year += 1
+            months = min(remaining_months, 12)
+            fy_months[current_key_year] = months
+            remaining_months -= months
+            
         return fy_months
 
     # 5. Fitout Amortization & Imputed Interest
@@ -229,16 +256,48 @@ def simulate(params):
     capex_lives = params.get("Capex Useful Lives", {})
 
     def get_capex_tranche_months(s_dt, t_m, tranche_idx, useful_life):
-        tranche_yr = s_dt.year + tranche_idx - 1
+        effective_term = max(t_m, 120)
         if tranche_idx == 1:
-            return calculate_fy_months_local(s_dt, t_m, useful_life)
+            return calculate_fy_months_local(s_dt, effective_term, useful_life)
+            
+        if s_dt.month <= 9:
+            fy_end_year = s_dt.year
         else:
-            first_year_months = 12 - s_dt.month + 1
-            elapsed = first_year_months + 12 * (tranche_idx - 2)
-            remaining = max(0, t_m - elapsed)
-            if remaining <= 0:
-                return {}
-            return calculate_fy_months_local(datetime.date(tranche_yr, 1, 1), remaining, useful_life)
+            fy_end_year = s_dt.year + 1
+            
+        first_fy_end = datetime.date(fy_end_year, 9, 30)
+        
+        y1_months = 0
+        for m in range(1, 100):
+            y = s_dt.year + (s_dt.month + m - 1) // 12
+            m_calc = (s_dt.month + m - 1) % 12 + 1
+            import calendar
+            last_day = calendar.monthrange(y, m_calc)[1]
+            day = min(s_dt.day, last_day)
+            end_d = datetime.date(y, m_calc, day) - datetime.timedelta(days=1)
+            
+            if end_d <= first_fy_end:
+                y1_months = m
+            else:
+                break
+        y1_months = max(1, y1_months)
+        
+        elapsed = y1_months + 12 * (tranche_idx - 2)
+        remaining = max(0, effective_term - elapsed)
+        if remaining <= 0:
+            return {}
+            
+        amort_term = min(remaining, useful_life)
+        fy_months = {}
+        current_key_year = s_dt.year + tranche_idx - 1
+        
+        while amort_term > 0:
+            months = min(amort_term, 12)
+            fy_months[current_key_year] = months
+            amort_term -= months
+            current_key_year += 1
+            
+        return fy_months
 
     start_year = start_date.year
     tranches = []
@@ -248,8 +307,9 @@ def simulate(params):
         if i == 1:
             default_life = term_months
         else:
-            first_year_months = 12 - start_date.month + 1
-            elapsed = first_year_months + 12 * (i - 2)
+            from sheets.capex_pm import get_y1_months
+            y1_months = get_y1_months(start_date)
+            elapsed = y1_months + 12 * (i - 2)
             default_life = max(0, term_months - elapsed)
         life = capex_lives.get(yr, default_life)
         tranches.append({"cost": cost, "life": life, "start_year": yr})

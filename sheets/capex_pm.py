@@ -3,24 +3,55 @@ import numpy as np
 import datetime
 import openpyxl
 
+def get_y1_months(start_date):
+    """
+    Calculates the number of months in the first financial year (Oct-Sep)
+    from start_date. Matches the lease_rent.py logic.
+    """
+    if start_date.month <= 9:
+        fy_end_year = start_date.year
+    else:
+        fy_end_year = start_date.year + 1
+        
+    first_fy_end = datetime.date(fy_end_year, 9, 30)
+    
+    y1_months = 0
+    for m in range(1, 100):
+        y = start_date.year + (start_date.month + m - 1) // 12
+        m_calc = (start_date.month + m - 1) % 12 + 1
+        import calendar
+        last_day = calendar.monthrange(y, m_calc)[1]
+        day = min(start_date.day, last_day)
+        end_d = datetime.date(y, m_calc, day) - datetime.timedelta(days=1)
+        
+        if end_d <= first_fy_end:
+            y1_months = m
+        else:
+            break
+    return max(1, y1_months)
+
 def calculate_fy_months(start_date, term_months, fitout_term_months):
     """
-    Dynamically distributes term_months across fiscal years (Calendar Years).
+    Dynamically distributes term_months across fiscal years (Oct to Sep).
+    Keys are calendar years representing the financial year of the lease.
     """
     fy_months = {}
-    current_year = start_date.year
     remaining_months = min(term_months, fitout_term_months)
+    if remaining_months <= 0:
+        return fy_months
+        
+    y1_months = get_y1_months(start_date)
     
-    # First year months (from start_date month to Dec 31)
-    first_year_months = min(remaining_months, 12 - start_date.month + 1)
-    fy_months[current_year] = first_year_months
-    remaining_months -= first_year_months
+    current_key_year = start_date.year
+    first_year_m = min(remaining_months, y1_months)
+    fy_months[current_key_year] = first_year_m
+    remaining_months -= first_year_m
     
     # Subsequent years
     while remaining_months > 0:
-        current_year += 1
+        current_key_year += 1
         months = min(remaining_months, 12)
-        fy_months[current_year] = months
+        fy_months[current_key_year] = months
         remaining_months -= months
         
     return fy_months
@@ -28,18 +59,30 @@ def calculate_fy_months(start_date, term_months, fitout_term_months):
 def get_capex_tranche_months(start_date, term_months, tranche_idx, useful_life):
     """
     Helper to calculate active months for a given CAPEX tranche with user-defined useful life.
+    Capex is allowed to extend up to 120 months (10 years) like Fitouts.
     """
-    start_year = start_date.year
-    tranche_year = start_year + tranche_idx - 1
+    effective_term = max(term_months, 120)
     if tranche_idx == 1:
-        return calculate_fy_months(start_date, term_months, useful_life)
-    else:
-        first_year_months = 12 - start_date.month + 1
-        elapsed = first_year_months + 12 * (tranche_idx - 2)
-        remaining = max(0, term_months - elapsed)
-        if remaining <= 0:
-            return {}
-        return calculate_fy_months(datetime.date(tranche_year, 1, 1), remaining, useful_life)
+        return calculate_fy_months(start_date, effective_term, useful_life)
+        
+    y1_months = get_y1_months(start_date)
+    
+    elapsed = y1_months + 12 * (tranche_idx - 2)
+    remaining = max(0, effective_term - elapsed)
+    if remaining <= 0:
+        return {}
+        
+    amort_term = min(remaining, useful_life)
+    fy_months = {}
+    current_key_year = start_date.year + tranche_idx - 1
+    
+    while amort_term > 0:
+        months = min(amort_term, 12)
+        fy_months[current_key_year] = months
+        amort_term -= months
+        current_key_year += 1
+        
+    return fy_months
 
 def shift_merged_ranges(ws, start_row, amount):
     """
@@ -215,8 +258,8 @@ def inject(ws, params):
             if i == 1:
                 default_life = term_months
             else:
-                first_year_months = 12 - start_date.month + 1
-                elapsed = first_year_months + 12 * (i - 2)
+                y1_months = get_y1_months(start_date)
+                elapsed = y1_months + 12 * (i - 2)
                 default_life = max(0, term_months - elapsed)
             life = capex_lives.get(yr, default_life)
             tranche_months = capex_active_months[i - 1] if (i - 1) < len(capex_active_months) and capex_active_months[i - 1] else get_capex_tranche_months(start_date, term_months, i, life)
@@ -327,8 +370,8 @@ def simulate(params):
         if i == 1:
             default_life = term_months
         else:
-            first_year_months = 12 - start_date.month + 1
-            elapsed = first_year_months + 12 * (i - 2)
+            y1_months = get_y1_months(start_date)
+            elapsed = y1_months + 12 * (i - 2)
             default_life = max(0, term_months - elapsed)
             
         life = capex_lives.get(yr, default_life)

@@ -218,8 +218,9 @@ def render_sidebar():
             if i == 0:
                 default_life = term_months if term_months > 0 else None
             else:
-                first_year_months = 12 - start_date.month + 1 if start_date else 12
-                elapsed = first_year_months + 12 * (i - 1)
+                from sheets.capex_pm import get_y1_months
+                y1_months = get_y1_months(start_date) if start_date else 12
+                elapsed = y1_months + 12 * (i - 1)
                 default_life = max(0, term_months - elapsed) if term_months > 0 else None
                 
             default_l = capex_lives_dict.get(yr, default_life)
@@ -275,7 +276,7 @@ def render_sidebar():
         if non_zero_pm_years:
             default_num_pm = max(1, max(non_zero_pm_years) - start_year + 1)
         else:
-            default_num_pm = 6
+            default_num_pm = 4
             
         max_pm = max(10, default_num_pm)
         num_pm = st.selectbox("Number of PM Years", list(range(1, max_pm + 1)), index=default_num_pm - 1, key=f"num_pm{key_suffix}", help="Select the number of years for Preventive Maintenance schedule.")

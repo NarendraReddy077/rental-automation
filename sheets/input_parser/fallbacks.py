@@ -78,8 +78,9 @@ def apply_schedules_and_fallbacks(
             if yr == start_year:
                 life = term_months
             else:
-                first_year_months = 12 - start_date.month + 1
-                elapsed = first_year_months + 12 * (yr - start_year - 1)
+                from sheets.capex_pm import get_y1_months
+                y1_months = get_y1_months(start_date)
+                elapsed = y1_months + 12 * (yr - start_year - 1)
                 life = max(0, term_months - elapsed)
             capex_lives[yr] = life
 
