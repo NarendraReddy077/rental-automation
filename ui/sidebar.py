@@ -82,6 +82,8 @@ def render_sidebar():
         
         sec_deposit = st.number_input("Security Deposit Amount (INR)", value=int(params["Security Deposit Amount"]) if params["Security Deposit Amount"] is not None else None, key=f"sec_deposit{key_suffix}", step=50000, help="Interest-free refundable security deposit amount.")
         energy_dep = st.number_input("Energy Deposit Amount (INR)", value=int(params["Addnl.Deposit -energy(Refundable)"]) if params["Addnl.Deposit -energy(Refundable)"] is not None else None, key=f"energy_dep{key_suffix}", step=10000, help="Additional refundable security deposit specifically for power/utilities.")
+        sec_deposit_months = st.number_input("Security Deposit Months", value=int(params["Security Deposit Months"]) if params.get("Security Deposit Months") is not None else 10, key=f"sec_deposit_months{key_suffix}", step=1, help="Rent security deposit term in number of months.")
+        maint_dep_months = st.number_input("Maintenance Security Deposit (number of months)", value=int(params["Maintenance Security Deposit Months"]) if params.get("Maintenance Security Deposit Months") is not None else 0, key=f"maint_dep_months{key_suffix}", step=1, help="Maintenance security deposit term in number of months.")
 
     # Expander 1.5: Parking Configuration
     with st.sidebar.expander("▶ Parking Configuration"):
@@ -323,6 +325,8 @@ def render_sidebar():
         "CAM Escalation Frequency Months": int(cam_esc_freq) if cam_esc_freq is not None else None,
         "Security Deposit Amount": float(sec_deposit) if sec_deposit is not None else None,
         "Addnl.Deposit -energy(Refundable)": float(energy_dep) if energy_dep is not None else None,
+        "Security Deposit Months": int(sec_deposit_months) if sec_deposit_months is not None else 10,
+        "Maintenance Security Deposit Months": int(maint_dep_months) if maint_dep_months is not None else 0,
         "4 Wheeler Slots": int(four_w_slots) if four_w_slots is not None else None,
         "4 Wheeler Rate": float(four_w_rate) if four_w_rate is not None else None,
         "2 Wheeler Slots": int(two_w_slots) if two_w_slots is not None else None,

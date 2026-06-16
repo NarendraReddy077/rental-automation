@@ -160,6 +160,7 @@ def extract_main_parameters(raw_params):
 
     params["Billing Frequency"] = get_str(raw_params, "Billing Frequency", ["BillingFrequency"], "Monthly")
     params["Security Deposit Months"] = get_float(raw_params, "Security Deposit Months", ["Security Deposit (number of months)", "Security Deposit (Months)"], 6.0)
+    params["Maintenance Security Deposit Months"] = get_float(raw_params, "Maintenance Security Deposit Months", ["Maintenance Security Deposit (number of months)", "Maintenance Security Deposit Months"], 0.0)
     params["Security Deposit Amount"] = get_float(raw_params, "Security Deposit Amount", ["Security Deposit Amount (INR)", "Security Deposit"], 11418000.0)
     params["Refundable Deposit"] = get_str(raw_params, "Refundable Deposit", ["Refundable"], "Yes")
     

@@ -9,7 +9,8 @@ def inject(ws, params):
     ws["F10"] = params.get("City", "Chennai")
     ws["F17"] = params.get("Lease Type", "Warm Shell")
     ws["F27"] = "='CAPEX and PM'!E3"
-    ws["F33"] = params.get("Security Deposit Months", 10)
+    ws["F32"] = params.get("Security Deposit Months", 10)
+    ws["F33"] = params.get("Maintenance Security Deposit Months", 0)
     ws["F69"] = params.get("Addnl.Deposit -energy(Refundable)", 0.0)
     ws["F117"] = params.get("Opex Others Per Month", 654.0)
     opex_mgmt_fee = params.get("Opex Management Fee Pct", 0.07)
@@ -137,9 +138,12 @@ def simulate(params):
     avg_parking_per_sqft = (total_parking / period_months) / area_sqft
 
     # 3. Security deposit carrying cost
+    maint_sd_months = params.get("Maintenance Security Deposit Months", 0.0) or 0.0
+    cam_sd_amount = cam_rate * area_sqft * maint_sd_months
     sd_interest = sd_amount * capital_rate / 12.0 * period_months
+    cam_sd_interest = cam_sd_amount * capital_rate / 12.0 * period_months
     energy_interest = energy_deposit * capital_rate * 3.0
-    total_sd_interest = sd_interest + energy_interest
+    total_sd_interest = sd_interest + cam_sd_interest + energy_interest
     carrying_cost_per_sqft = total_sd_interest / (area_sqft * period_months)
 
     # 4. Stamp duty

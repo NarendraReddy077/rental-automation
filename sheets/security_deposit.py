@@ -6,7 +6,7 @@ def inject(ws, params):
     """
     ws["B9"] = 0.0  # Fitout Deposit
     ws["B10"] = params["Security Deposit Amount"]
-    ws["B11"] = 0.0  # Additional deposit
+    ws["B11"] = "='Rent Calculation'!F71"  # Additional deposit
     ws["B12"] = params["Addnl.Deposit -energy(Refundable)"]
     
     # Write the user incremental ARO rate to cell B23 if overridden
@@ -28,14 +28,20 @@ def simulate(params):
     sd_amt = params["Security Deposit Amount"]
     energy_dep = params["Addnl.Deposit -energy(Refundable)"]
     
+    # Calculate CAM Security Deposit (Additional deposit)
+    cam_rate = params.get("Quoted CAM", 15.48) or 15.48
+    maint_sd_months = params.get("Maintenance Security Deposit Months", 0.0) or 0.0
+    cam_sd_amount = cam_rate * (area_sqft or 0.0) * maint_sd_months
+    
     # Interest carrying costs calculations
     # carrying interest cost = Deposit * WACC / 12 * term_months
     sd_carrying_cost = sd_amt * capital_rate / 12 * term_months
+    cam_sd_carrying_cost = cam_sd_amount * capital_rate / 12 * term_months
     energy_carrying_cost = energy_dep * capital_rate / 12 * 36  # In specimen, energy deposit term is 36 months!
     
-    total_deposit = sd_amt + energy_dep
-    total_carrying_cost = sd_carrying_cost + energy_carrying_cost
-    carrying_cost_rate_sqft = total_carrying_cost / (area_sqft * term_months)
+    total_deposit = sd_amt + cam_sd_amount + energy_dep
+    total_carrying_cost = sd_carrying_cost + cam_sd_carrying_cost + energy_carrying_cost
+    carrying_cost_rate_sqft = total_carrying_cost / (area_sqft * term_months) if (area_sqft and term_months) else 0.0
     
     # ARO (Asset Retirement Obligation) calculations
     aro_rate = params.get("Incremental Restoration Cost Sqft")
@@ -51,6 +57,7 @@ def simulate(params):
     return {
         "Fitout Deposit": {"Amount": 0.0, "Carrying Cost": 0.0},
         "Security Deposit": {"Amount": sd_amt, "Carrying Cost": sd_carrying_cost},
+        "Additional Deposit": {"Amount": cam_sd_amount, "Carrying Cost": cam_sd_carrying_cost},
         "Energy Deposit": {"Amount": energy_dep, "Carrying Cost": energy_carrying_cost},
         "Total Deposits": {"Amount": total_deposit, "Carrying Cost": total_carrying_cost},
         "Carrying Cost per Sqft/mo": carrying_cost_rate_sqft,
