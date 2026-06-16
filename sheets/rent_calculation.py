@@ -16,6 +16,7 @@ def inject(ws, params):
     opex_mgmt_fee = params.get("Opex Management Fee Pct", 0.07)
     ws["F118"] = f"=F117*{opex_mgmt_fee}"
     ws["G118"] = f"=G117*{opex_mgmt_fee}"
+    ws["G93"] = f"=(+SUM(G86:G92)+G103)*{opex_mgmt_fee}"
     ws["F122"] = params.get("Opex II Per Month", 0.0)
     ws["G122"] = "=F122"
     
@@ -304,14 +305,14 @@ def simulate(params):
     net_rent_2 = fitout_sqft_mo + capex_sqft_mo + pm_sqft_mo + aro_sqft_mo
 
     # 10. Property Management Fees (Net Rent I)
-    eff_pm_fees = (avg_rent + avg_parking_per_sqft + carrying_cost_per_sqft + avg_cam + eff_stamp_duty + net_rent_2) * 0.07
+    opex_mgmt_fee = params.get("Opex Management Fee Pct", 0.07)
+    eff_pm_fees = (avg_rent + avg_parking_per_sqft + carrying_cost_per_sqft + avg_cam + eff_stamp_duty + net_rent_2) * opex_mgmt_fee
 
     # 11. Net Rent I
     net_rent_1 = avg_rent + avg_parking_per_sqft + carrying_cost_per_sqft + avg_cam + eff_stamp_duty + eff_pm_fees
 
     # 12. Opex
     opex_others = params.get("Opex Others Per Month", 63.0)
-    opex_mgmt_fee = params.get("Opex Management Fee Pct", 0.07)
     opex_1 = opex_others * (1.0 + opex_mgmt_fee)
     opex_2 = params.get("Opex II Per Month", 0.0)
 

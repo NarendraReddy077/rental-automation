@@ -107,7 +107,7 @@ def render_sidebar():
     # Expander 1.6: OpEx Configuration
     with st.sidebar.expander("▶ OpEx Configuration"):
         opex_others = st.number_input("Opex I (per month)", value=float(params.get("Opex Others Per Month")) if params.get("Opex Others Per Month") is not None else None, key=f"opex_others{key_suffix}", step=10.0, help="Opex Others monthly amount.")
-        opex_mgmt_fee = st.number_input("Opex Management fee %", value=float(params.get("Opex Management Fee Pct") * 100) if params.get("Opex Management Fee Pct") is not None else 7.0, format="%.2f", step=0.10, key=f"opex_mgmt_fee{key_suffix}", help="Management fee percentage applied to Opex I.")
+        opex_mgmt_fee = st.number_input("Management fee %", value=float(params.get("Opex Management Fee Pct") * 100) if params.get("Opex Management Fee Pct") is not None else 7.0, format="%.2f", step=0.10, key=f"opex_mgmt_fee{key_suffix}", help="Management fee percentage applied to Opex I.")
         opex_ii = st.number_input("Opex II (per month)", value=float(params.get("Opex II Per Month")) if params.get("Opex II Per Month") is not None else None, key=f"opex_ii{key_suffix}", step=10.0, help="Opex II monthly amount (OpEx Add-on).")
 
     # Expander 2: CAPEX & PM Investment Schedule
