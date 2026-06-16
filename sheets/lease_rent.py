@@ -147,6 +147,11 @@ def inject(ws, params):
         ws.cell(row=r, column=12, value=f"=J{r}*E{r}")     # Column L: CAM SQF
         ws.cell(row=r, column=13, value=f"=I{r}+K{r}+L{r}") # Column M: Total
                 
+        # Clear columns N, O, P to avoid stale template calculations
+        ws.cell(row=r, column=14).value = None
+        ws.cell(row=r, column=15).value = None
+        ws.cell(row=r, column=16).value = None
+        
         # Determine if this row is a Year boundary (for years 1 to 10)
         # Year 1 summary is written at row 39 (Month 9)
         # Year 2 summary at row 51 (Month 21)
