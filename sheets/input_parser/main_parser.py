@@ -182,7 +182,7 @@ def extract_main_parameters(raw_params):
     
     # OpEx I and OpEx II parameters
     params["Opex Others Per Month"] = get_float(raw_params, "Opex Others Per Month", ["Opex Others", "OpEx Others Rs../ month (At Actuals)", "Opex Others Rs./ month", "Opex Others Rs/ month", "Opex I", "Opex I Per Month", "Opex I per months", "Opex I Per Months", "Opex I (per month)"], 654.0)
-    params["Opex Management Fee Pct"] = get_float(raw_params, "Opex Management Fee Pct", ["Opex Management fee %", "Opex Management Fee %", "Opex Management Fee Percentage", "Opex Management fee Pct", "Opex Mgmt Fee %"], 0.07)
+    params["Opex Management Fee Pct"] = get_float(raw_params, "Opex Management Fee Pct", ["Opex Management fee %", "Management fee %"], 0.07)
     params["Opex II Per Month"] = get_float(raw_params, "Opex II Per Month", ["Opex II", "OpEx II Rs../ month", "Opex II Rs./ month", "Opex II Rs/ month", "Opex II - OpEx Add-on"], 0.0)
     
     total_pm = get_float(raw_params, "PM Cost Over Lease", ["Preventive Maintenance Cost", "PM Cost", "Maintenance Cost over Lease", "PM cost Over lease period", "PM cost Over lease"], 2500000.0)
