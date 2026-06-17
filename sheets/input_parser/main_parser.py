@@ -1,4 +1,5 @@
 import io
+import re
 import datetime
 import pandas as pd
 from sheets.input_parser.utils import get_str, get_float, get_int, parse_date, get_value_by_aliases
@@ -189,3 +190,78 @@ def extract_main_parameters(raw_params):
     params["PM Cost Over Lease"] = total_pm
     
     return params
+
+def parse_schedules_from_main_fallback(raw_params, start_year=2026):
+    """Regex parses fitout cost breakdown, Capex schedule, and PM schedule from raw_params."""
+    fitout_breakdown = []
+    capex_sched = {}
+    pm_sched = {}
+    
+    # 1. Fitout breakdown costs
+    fitout_costs_dict = {}
+    for key, val in raw_params.items():
+        key_clean = key.lower()
+        if "fitout" in key_clean and "phase" in key_clean:
+            m = re.search(r"\d+", key)
+            if m:
+                try:
+                    phase_num = int(m.group(0))
+                    if val is not None and not pd.isna(val):
+                        fitout_costs_dict[phase_num] = float(val)
+                except Exception:
+                    pass
+    for p_num in sorted(fitout_costs_dict.keys()):
+        fitout_breakdown.append(fitout_costs_dict[p_num])
+                
+    # 2. Capex schedule
+    for key, val in raw_params.items():
+        key_clean = key.lower().replace(" ", "")
+        if "capex" in key_clean:
+            m = re.search(r"\b(20\d{2})\b|(?<=fy)(20\d{2})", key_clean)
+            if not m:
+                m = re.search(r"\d{4}", key)
+            if m:
+                try:
+                    yr = int(m.group(0))
+                    if val is not None and not pd.isna(val):
+                        capex_sched[yr] = float(val)
+                except Exception:
+                    pass
+            else:
+                m_rel = re.search(r"fy(\d+)", key_clean)
+                if m_rel:
+                    try:
+                        n = int(m_rel.group(1))
+                        yr = start_year + n - 1
+                        if val is not None and not pd.isna(val):
+                            capex_sched[yr] = float(val)
+                    except Exception:
+                        pass
+                
+    # 3. PM schedule
+    for key, val in raw_params.items():
+        key_clean = key.lower().replace(" ", "")
+        if "pm" in key_clean or "maintenance" in key_clean:
+            m = re.search(r"\b(20\d{2})\b|(?<=fy)(20\d{2})", key_clean)
+            if not m:
+                m = re.search(r"\d{4}", key)
+            if m:
+                try:
+                    yr = int(m.group(0))
+                    if val is not None and not pd.isna(val):
+                        pm_sched[yr] = float(val)
+                except Exception:
+                    pass
+            else:
+                m_rel = re.search(r"fy(\d+)", key_clean)
+                if m_rel:
+                    try:
+                        n = int(m_rel.group(1))
+                        yr = start_year + n - 1
+                        if val is not None and not pd.isna(val):
+                            pm_sched[yr] = float(val)
+                    except Exception:
+                        pass
+
+    return fitout_breakdown, capex_sched, pm_sched
+
