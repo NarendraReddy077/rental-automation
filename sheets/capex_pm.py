@@ -16,7 +16,7 @@ def get_y1_months(start_date):
     first_fy_end = datetime.date(fy_end_year, 9, 30)
     
     y1_months = 0
-    for m in range(1, 100):
+    for m in range(1, 13):
         y = start_date.year + (start_date.month + m - 1) // 12
         m_calc = (start_date.month + m - 1) % 12 + 1
         import calendar
