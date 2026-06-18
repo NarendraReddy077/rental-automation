@@ -75,13 +75,7 @@ def apply_schedules_and_fallbacks(
     # Capex useful lives fallback
     if not capex_lives:
         for yr in sorted(capex_sched.keys()):
-            if yr == start_year:
-                life = term_months
-            else:
-                from sheets.capex_pm import get_y1_months
-                y1_months = get_y1_months(start_date)
-                elapsed = y1_months + 12 * (yr - start_year - 1)
-                life = max(0, term_months - elapsed)
+            life = max(0, term_months - 12 * (yr - start_year))
             capex_lives[yr] = life
 
     # Capex active months fallback

@@ -215,21 +215,19 @@ def render_sidebar():
             default_val = capex_dict.get(yr, None)
             
             # Calculate default life (remaining lease term)
-            if i == 0:
-                default_life = term_months if term_months > 0 else None
-            else:
-                from sheets.capex_pm import get_y1_months
-                y1_months = get_y1_months(start_date) if start_date else 12
-                elapsed = y1_months + 12 * (i - 1)
-                default_life = max(0, term_months - elapsed) if term_months > 0 else None
+            default_life = max(0, term_months - 12 * i) if term_months > 0 else None
                 
-            default_l = capex_lives_dict.get(yr, default_life)
+            dates_changed = (
+                (params.get("Agreement Start Date") is not None and start_date != params.get("Agreement Start Date")) or
+                (params.get("Agreement End Date") is not None and end_date != params.get("Agreement End Date"))
+            )
+            default_l = default_life if dates_changed else capex_lives_dict.get(yr, default_life)
             
             col1, col2 = st.columns(2)
             with col1:
                 val = st.number_input(f"Capex FY{i+1} Cost", value=int(default_val) if default_val is not None else None, key=f"capex_cost_{i}{key_suffix}", step=100000, help=f"Estimated Capital Expenditures for Fiscal Year {yr}.")
             with col2:
-                life = st.number_input(f"FY{i+1} Useful Life (mo)", value=int(default_l) if default_l is not None else None, key=f"capex_life_{i}{key_suffix}", step=12, help=f"Amortization period for CAPEX in Fiscal Year {yr} in months.")
+                life = st.number_input(f"FY{i+1} Useful Life (mo)", value=int(default_l) if default_l is not None else None, key=f"capex_life_{i}_{term_months}_{start_date}{key_suffix}", step=12, help=f"Amortization period for CAPEX in Fiscal Year {yr} in months.")
                 
             capex_useful_lives[yr] = int(life) if life is not None else 0
             if val is not None and val > 0:

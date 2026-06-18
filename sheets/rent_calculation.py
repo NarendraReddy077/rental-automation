@@ -291,6 +291,11 @@ def simulate(params):
         fy_months = {}
         current_key_year = s_dt.year + tranche_idx - 1
         
+        first_year_m = min(amort_term, y1_months)
+        fy_months[current_key_year] = first_year_m
+        amort_term -= first_year_m
+        
+        current_key_year += 1
         while amort_term > 0:
             months = min(amort_term, 12)
             fy_months[current_key_year] = months
@@ -304,13 +309,7 @@ def simulate(params):
     for i in range(1, 11):
         yr = start_year + i - 1
         cost = capex_sched.get(yr, 0.0)
-        if i == 1:
-            default_life = term_months
-        else:
-            from sheets.capex_pm import get_y1_months
-            y1_months = get_y1_months(start_date)
-            elapsed = y1_months + 12 * (i - 2)
-            default_life = max(0, term_months - elapsed)
+        default_life = max(0, term_months - 12 * (i - 1))
         life = capex_lives.get(yr, default_life)
         tranches.append({"cost": cost, "life": life, "start_year": yr})
 

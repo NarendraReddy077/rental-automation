@@ -76,6 +76,11 @@ def get_capex_tranche_months(start_date, term_months, tranche_idx, useful_life):
     fy_months = {}
     current_key_year = start_date.year + tranche_idx - 1
     
+    first_year_m = min(amort_term, y1_months)
+    fy_months[current_key_year] = first_year_m
+    amort_term -= first_year_m
+    
+    current_key_year += 1
     while amort_term > 0:
         months = min(amort_term, 12)
         fy_months[current_key_year] = months
@@ -108,7 +113,11 @@ def inject(ws, params):
 
     # Write dynamic relative year headers in Row 2
     for c in range(6, 16):
-        ws.cell(row=2, column=c, value=f"FY{c - 5}")
+        if c == 6:
+            ws.cell(row=2, column=c, value="=YEAR('Lease Rent'!B31)")
+        else:
+            prev_col = openpyxl.utils.get_column_letter(c - 1)
+            ws.cell(row=2, column=c, value=f"={prev_col}2+1")
 
     fitouts = list(params.get("Fitout Cost Breakdown", []))
     fitout_lifes = list(params.get("Fitout Useful Lives", []))
@@ -233,9 +242,10 @@ def inject(ws, params):
     r_capex_cost = 37 + offset
     r_capex_val = 38 + offset
     
-    # Write Capex schedule by FY
+    # Write Capex schedule calendar years in Row r_capex_header
     for c in range(6, 16):
-        ws.cell(row=r_capex_header, column=c, value=f"FY{c - 5}")
+        col_char = openpyxl.utils.get_column_letter(c)
+        ws.cell(row=r_capex_header, column=c, value=f"={col_char}2")
         
     capex_sched = params.get("Capex Schedule", {})
     for c in range(6, 16):
@@ -255,32 +265,37 @@ def inject(ws, params):
         row_num = 40 + offset + 5 * (i - 1)
         yr = start_year + (i - 1)
         if i <= num_capex_configured:
-            if i == 1:
-                default_life = term_months
-            else:
-                y1_months = get_y1_months(start_date)
-                elapsed = y1_months + 12 * (i - 2)
-                default_life = max(0, term_months - elapsed)
+            default_life = max(0, term_months - 12 * (i - 1))
             life = capex_lives.get(yr, default_life)
-            tranche_months = capex_active_months[i - 1] if (i - 1) < len(capex_active_months) and capex_active_months[i - 1] else get_capex_tranche_months(start_date, term_months, i, life)
         else:
-            tranche_months = {}
-            
-        for c in range(6, 16):
-            fy = start_year + (c - 6)
-            ws.cell(row=row_num, column=c, value=tranche_months.get(fy, 0))
+            life = 0
             
         # Write/Update formulas for the Capex tranche to handle shifted row references
         col_char_tranche = openpyxl.utils.get_column_letter(5 + i)
         ws.cell(row=row_num, column=2, value=f"=+{col_char_tranche}{38+offset}")
         ws.cell(row=row_num, column=5, value=f"=SUM(F{row_num}:O{row_num})")
         
-        ws.cell(row=row_num+1, column=2, value=f"=E{row_num}/12")
-        ws.cell(row=row_num+1, column=5, value=f"=E{row_num}-SUM(F{row_num}:O{row_num})")
+        # Write useful life in years as a static number to avoid circular reference in SUMIF formulas
+        ws.cell(row=row_num+1, column=2, value=life / 12.0)
+        ws.cell(row=row_num+1, column=5, value=f"=E{row_num}-SUM(F{row_num}:N{row_num})")
         
         for c in range(6, 16):
             col_char = openpyxl.utils.get_column_letter(c)
+            if i <= num_capex_configured:
+                if c < 5 + i:
+                    ws.cell(row=row_num, column=c, value=0)
+                elif c == 5 + i:
+                    ws.cell(row=row_num, column=c, value=f"=MIN($B${row_num+1}*12, 'Lease Rent'!$H$19)")
+                else:
+                    start_col = openpyxl.utils.get_column_letter(5 + i)
+                    prev_col = openpyxl.utils.get_column_letter(c - 1)
+                    ws.cell(row=row_num, column=c, value=f"=MIN(SUMIF('Lease Rent'!$A$31:$A$1048576, {col_char}${r_capex_header}, 'Lease Rent'!$D$31:$D$1048576), MAX(0, $B${row_num+1}*12 - SUM(${start_col}{row_num}:{prev_col}{row_num})))")
+            else:
+                ws.cell(row=row_num, column=c, value=0)
+                
+            # Write Annual Depreciation Rate formula
             ws.cell(row=row_num+2, column=c, value=f"=IF({col_char}{row_num}<>0,${col_char_tranche}${38+offset}/$B${row_num+1},0)")
+            # Write used Depreciation formula
             ws.cell(row=row_num+3, column=c, value=f"={col_char}{row_num+2}/12*{col_char}{row_num}")
             
         # Show/Hide rows based on whether this tranche is configured
@@ -367,12 +382,7 @@ def simulate(params):
     for i in range(1, 11):
         yr = start_year + i - 1
         cost = capex_sched.get(yr, 0.0)
-        if i == 1:
-            default_life = term_months
-        else:
-            y1_months = get_y1_months(start_date)
-            elapsed = y1_months + 12 * (i - 2)
-            default_life = max(0, term_months - elapsed)
+        default_life = max(0, term_months - 12 * (i - 1))
             
         life = capex_lives.get(yr, default_life)
         tranches.append({
